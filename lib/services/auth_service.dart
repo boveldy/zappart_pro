@@ -87,6 +87,25 @@ class AuthService extends ChangeNotifier {
     );
   }
 
+  /// Connexion Google — via popup web. Même provider que l'app mobile → même
+  /// `uid`, donc le `partenaire_ref` déjà posé par le wizard reste valable.
+  Future<void> signInWithGoogle() {
+    final provider = GoogleAuthProvider()
+      ..addScope('email')
+      ..setCustomParameters({'prompt': 'select_account'});
+    return FirebaseAuth.instance.signInWithPopup(provider);
+  }
+
+  /// Connexion Apple — nécessite la config Service ID côté portail Apple +
+  /// Firebase. Tant qu'elle n'est pas faite, le bouton renverra une erreur
+  /// explicite (gérée par l'écran de connexion).
+  Future<void> signInWithApple() {
+    final provider = OAuthProvider('apple.com')
+      ..addScope('email')
+      ..addScope('name');
+    return FirebaseAuth.instance.signInWithPopup(provider);
+  }
+
   Future<void> sendPasswordReset(String email) {
     return FirebaseAuth.instance.sendPasswordResetEmail(email: email.trim());
   }

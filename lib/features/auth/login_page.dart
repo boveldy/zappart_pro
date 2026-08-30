@@ -45,11 +45,35 @@ class _LoginPageState extends State<LoginPage> {
           return 'E-mail ou mot de passe incorrect.';
         case 'too-many-requests':
           return 'Trop de tentatives. Réessayez dans quelques minutes.';
+        case 'popup-closed-by-user':
+        case 'cancelled-popup-request':
+          return '';
+        case 'popup-blocked':
+          return 'La fenêtre de connexion a été bloquée par le navigateur.';
+        case 'account-exists-with-different-credential':
+          return 'Ce compte existe déjà avec un autre mode de connexion.';
+        case 'operation-not-allowed':
+          return 'Ce mode de connexion n\'est pas encore activé.';
         default:
           return 'Connexion impossible (${e.code}).';
       }
     }
     return 'Connexion impossible. Vérifiez votre connexion.';
+  }
+
+  Future<void> _oauth(Future<void> Function() run) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await run();
+    } catch (e) {
+      final msg = _message(e);
+      if (mounted && msg.isNotEmpty) setState(() => _error = msg);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -131,6 +155,36 @@ class _LoginPageState extends State<LoginPage> {
                   Text('Espace de gestion partenaire',
                       style: AppTheme.label),
                   const SizedBox(height: 24),
+                  _ProviderButton(
+                    icon: Icons.account_circle_outlined,
+                    label: 'Continuer avec Google',
+                    onPressed: _busy
+                        ? null
+                        : () => _oauth(
+                            () => context.read<AuthService>().signInWithGoogle()),
+                  ),
+                  const SizedBox(height: 10),
+                  _ProviderButton(
+                    icon: Icons.apple,
+                    label: 'Continuer avec Apple',
+                    filled: true,
+                    onPressed: _busy
+                        ? null
+                        : () => _oauth(
+                            () => context.read<AuthService>().signInWithApple()),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text('ou',
+                          style: GoogleFonts.mavenPro(
+                              fontSize: 12, color: AppTheme.inkSoft)),
+                    ),
+                    const Expanded(child: Divider()),
+                  ]),
+                  const SizedBox(height: 18),
                   TextFormField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
@@ -187,6 +241,54 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bouton de connexion via fournisseur (Google / Apple). `filled` → fond noir
+/// (Apple), sinon fond blanc bordé (Google).
+class _ProviderButton extends StatelessWidget {
+  const _ProviderButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.filled = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = filled ? Colors.white : AppTheme.ink;
+    return SizedBox(
+      height: 48,
+      child: Material(
+        color: filled ? AppTheme.ink : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onPressed,
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: filled ? null : Border.all(color: AppTheme.line),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 20, color: fg),
+                const SizedBox(width: 10),
+                Text(label,
+                    style: GoogleFonts.mavenPro(
+                        fontSize: 14, fontWeight: FontWeight.w600, color: fg)),
+              ],
             ),
           ),
         ),
