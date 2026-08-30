@@ -1,48 +1,42 @@
 import 'package:flutter/material.dart';
 
-/// Éléments de marque Zappart, repris des assets de l'app officielle.
+/// Éléments de marque Zappart — versions **détourées** (fond transparent),
+/// dérivées des logos de l'app officielle.
 ///
-/// - [ZappartMark] : le monogramme « ZA » (blanc sur pastille noire) — pour
-///   les petits emplacements (rail réduit, favicon-like).
-/// - [ZappartWordmark] : le logotype « ZappArt » en noir — pour les en-têtes
-///   sur fond blanc.
+/// - [ZappartMark] : monogramme « ZA ».
+/// - [ZappartWordmark] : logotype « ZappArt ».
+///
+/// `light: true` → version blanche (pour fond sombre) ; sinon version noire.
 class ZappartMark extends StatelessWidget {
-  const ZappartMark({super.key, this.size = 32, this.radius = 9});
+  const ZappartMark({super.key, this.size = 32, this.light = false});
 
   final double size;
-  final double radius;
+  final bool light;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Image.asset(
+      light ? 'assets/images/mark_blanc.png' : 'assets/images/mark_noir.png',
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: EdgeInsets.all(size * 0.16),
-        child: Image.asset(
-          'assets/images/mark_za.png',
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.medium,
-        ),
-      ),
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
     );
   }
 }
 
 class ZappartWordmark extends StatelessWidget {
-  const ZappartWordmark({super.key, this.height = 22});
+  const ZappartWordmark({super.key, this.height = 28, this.light = false});
 
   final double height;
+  final bool light;
 
   @override
   Widget build(BuildContext context) {
     return Image.asset(
-      'assets/images/logo_zappart_texte_noir.jpg',
+      light
+          ? 'assets/images/wordmark_blanc.png'
+          : 'assets/images/wordmark_noir.png',
       height: height,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.medium,

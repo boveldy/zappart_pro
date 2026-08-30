@@ -307,25 +307,25 @@ class _FormPanel extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const ZappartWordmark(height: 24),
-                  const SizedBox(width: 9),
+                  const ZappartWordmark(height: 34),
+                  const SizedBox(width: 10),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppTheme.ink,
-                      borderRadius: BorderRadius.circular(5),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text('PRO',
                         style: GoogleFonts.mavenPro(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
-                            fontSize: 10,
+                            fontSize: 12,
                             letterSpacing: 1)),
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 30),
               Text('Bon retour',
                   style: GoogleFonts.mavenPro(
                       fontSize: 23, fontWeight: FontWeight.w700)),

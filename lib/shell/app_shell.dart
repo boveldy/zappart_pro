@@ -100,11 +100,11 @@ class _Sidebar extends StatelessWidget {
                     ? MainAxisAlignment.center
                     : MainAxisAlignment.start,
                 children: [
-                  const ZappartMark(size: 30, radius: 8),
+                  const ZappartMark(size: 28),
                   if (!compact) ...[
                     const SizedBox(width: 10),
-                    const ZappartWordmark(height: 20),
-                    const SizedBox(width: 6),
+                    const ZappartWordmark(height: 24),
+                    const SizedBox(width: 7),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
