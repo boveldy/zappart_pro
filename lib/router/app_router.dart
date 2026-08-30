@@ -5,12 +5,12 @@ import '../features/auth/login_page.dart';
 import '../features/calendrier/calendrier_page.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/not_partner_page.dart';
+import '../features/parametres/parametres_page.dart';
 import '../features/parc/fiche_bien_page.dart';
 import '../features/parc/nouvelle_annonce_page.dart';
 import '../features/parc/parc_page.dart';
 import '../features/reservations/reservations_page.dart';
 import '../features/revenus/revenus_page.dart';
-import '../features/placeholder_page.dart';
 import '../services/auth_service.dart';
 import '../shell/app_shell.dart';
 import '../theme/app_theme.dart';
@@ -75,11 +75,7 @@ GoRouter buildRouter(AuthService auth) {
           ),
           GoRoute(
             path: '/parametres',
-            builder: (_, __) => const PlaceholderPage(
-              title: 'Paramètres',
-              subtitle: 'Fiche agence et coordonnées de versement',
-              plannedFor: 'J5',
-            ),
+            builder: (_, __) => const ParametresPage(),
           ),
         ],
       ),
