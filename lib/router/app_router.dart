@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/login_page.dart';
+import '../features/calendrier/calendrier_page.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/not_partner_page.dart';
 import '../features/parc/fiche_bien_page.dart';
@@ -60,11 +61,7 @@ GoRouter buildRouter(AuthService auth) {
           ),
           GoRoute(
             path: '/calendrier',
-            builder: (_, __) => const PlaceholderPage(
-              title: 'Calendrier',
-              subtitle: 'Disponibilités de tout le parc',
-              plannedFor: 'J4',
-            ),
+            builder: (_, __) => const CalendrierPage(),
           ),
           GoRoute(
             path: '/reservations',
