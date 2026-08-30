@@ -1,0 +1,570 @@
+<title>Pistes de tableau de bord</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* ---------- page frame tokens (theme-aware) ---------- */
+  :root{
+    --bg:#f3f4f5;
+    --surface:#ffffff;
+    --ink:#17191b;
+    --muted:#6a6f75;
+    --line:#e3e5e7;
+    --accent:#c4836a;
+    --radius:14px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#101214; --surface:#17191b; --ink:#e9eaec; --muted:#9aa0a6; --line:#292c2f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101214; --surface:#17191b; --ink:#e9eaec; --muted:#9aa0a6; --line:#292c2f;
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Maven Pro",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1260px;margin:0 auto;padding:56px 28px 96px}
+
+  .lede{max-width:60ch}
+  .kicker{
+    font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 14px;
+  }
+  h1{
+    font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.02em;
+    text-wrap:balance;margin:0 0 14px;
+  }
+  .lede p{color:var(--muted);font-size:16px;margin:0 0 8px}
+
+  .legend{
+    display:flex;flex-wrap:wrap;gap:10px 22px;margin:26px 0 0;
+    font-size:13px;color:var(--muted);
+  }
+  .legend b{color:var(--ink);font-weight:600}
+
+  section.piste{margin-top:64px}
+  .phead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .plabel{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:12px;font-weight:600;letter-spacing:.08em;
+    color:var(--muted);border:1px solid var(--line);border-radius:6px;
+    padding:3px 8px;
+  }
+  .phead h2{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:0}
+  .pdesc{color:var(--muted);font-size:14.5px;max-width:64ch;margin:6px 0 22px}
+  .pdesc .pick{color:var(--ink);font-weight:600}
+
+  /* horizontal scroll container so the wide artboard never breaks the page */
+  .stage{
+    overflow-x:auto;
+    border-radius:calc(var(--radius) + 4px);
+    border:1px solid var(--line);
+    background:
+      repeating-linear-gradient(45deg,transparent 0 11px,color-mix(in srgb,var(--muted) 7%,transparent) 11px 12px);
+    padding:26px;
+  }
+  .artboard{width:1160px;border-radius:16px;overflow:hidden;box-shadow:0 20px 50px -24px rgba(0,0,0,.4)}
+
+  /* ============================================================= */
+  /*  SHARED ARTBOARD SKELETON (scoped per piste via .pa .pb .pc)  */
+  /* ============================================================= */
+  .db{display:grid;grid-template-columns:212px 1fr;min-height:660px;font-size:14px}
+  .db .side{display:flex;flex-direction:column;padding:20px 16px;gap:4px}
+  .db .brand{display:flex;align-items:center;gap:8px;padding:6px 8px 20px;font-weight:800;letter-spacing:-.01em;font-size:17px}
+  .db .brand .dot{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:12px;color:#fff}
+  .db nav a{
+    display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;
+    font-size:13.5px;font-weight:500;text-decoration:none;
+  }
+  .db nav a .ic{width:15px;height:15px;flex:0 0 15px;opacity:.8}
+  .db nav .sp{flex:1}
+  .db .main{display:flex;flex-direction:column}
+  .db .top{display:flex;align-items:center;justify-content:space-between;padding:20px 30px;gap:16px}
+  .db .top h3{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .db .top .sub{font-size:12.5px;font-weight:500}
+  .db .who{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
+  .db .who .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
+  .db .body{padding:6px 30px 30px;display:flex;flex-direction:column;gap:20px}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .kpi{padding:16px 16px 15px;display:flex;flex-direction:column;gap:7px}
+  .kpi .lab{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+  .kpi .val{font-size:25px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .kpi .val small{font-size:13px;font-weight:600;letter-spacing:0}
+  .kpi .delta{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+
+  .grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:20px}
+  .card{padding:18px 18px 16px;display:flex;flex-direction:column;gap:14px}
+  .card > .ch{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .card .ch h4{margin:0;font-size:14.5px;font-weight:700}
+  .card .ch .meta{font-size:12px;font-weight:500}
+
+  .chartwrap{position:relative}
+  .chartwrap svg{display:block;width:100%;height:auto;overflow:visible}
+  .xr{display:flex;justify-content:space-between;font-size:10.5px;margin-top:6px;font-variant-numeric:tabular-nums}
+
+  .arr{display:flex;flex-direction:column;gap:2px}
+  .arr .row{display:flex;align-items:center;gap:12px;padding:10px 4px}
+  .arr .row + .row{border-top:1px solid var(--rl,rgba(0,0,0,.06))}
+  .arr .day{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;width:52px;flex:0 0 52px;text-align:center;line-height:1.2}
+  .arr .info{flex:1;min-width:0}
+  .arr .info b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .arr .info span{font-size:11.5px}
+  .arr .pill{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
+
+  table.res{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.res th{
+    text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:0 10px 9px;
+  }
+  table.res td{padding:10px;border-top:1px solid var(--rl,rgba(0,0,0,.06));vertical-align:middle}
+  table.res td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  table.res .b{font-weight:600}
+  .tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
+
+  /* ---------------- PISTE A · Registre --------------------------- */
+  /* cool near-white, ink graphite, terracotta only as a hairline state,
+     mono figures, sharp corners, dense ledger tables                */
+  .pa .db{background:#fbfbfc;color:#1b1e21}
+  .pa .side{background:#fbfbfc;border-right:1px solid #e7e8ea}
+  .pa .brand{color:#1b1e21}
+  .pa .brand .dot{background:#1b1e21;border-radius:4px}
+  .pa nav a{color:#5b6167;border-radius:4px}
+  .pa nav a.on{background:#f0eceb;color:#1b1e21;font-weight:600;box-shadow:inset 2px 0 0 #c4836a}
+  .pa .top{border-bottom:1px solid #e7e8ea}
+  .pa .top .sub{color:#8a9096}
+  .pa .who .av{background:#1b1e21}
+  .pa .kpi{background:#fff;border:1px solid #e7e8ea;border-radius:4px}
+  .pa .kpi .lab{color:#8a9096}
+  .pa .kpi .val{font-family:"IBM Plex Mono",monospace;font-weight:600}
+  .pa .kpi .delta.up{color:#1f7a4d}
+  .pa .kpi .delta.flat{color:#8a9096}
+  .pa .kpi.alert{border-color:#c4836a;background:#fdf6f3}
+  .pa .card{background:#fff;border:1px solid #e7e8ea;border-radius:4px;--rl:#eef0f1}
+  .pa .card .ch .meta{color:#8a9096}
+  .pa .xr{color:#8a9096}
+  .pa .arr .day{color:#c4836a}
+  .pa .arr .info span{color:#8a9096}
+  .pa .arr .pill{background:#f0eceb;color:#6b5048}
+  .pa table.res th{color:#8a9096}
+  .pa table.res .b{color:#1b1e21}
+  .pa .tag.ok{background:#e7f1ec;color:#1f6a45}
+  .pa .tag.wait{background:#f3ede0;color:#7a6224}
+  .pa .tag.new{background:#fdeee8;color:#a2543a}
+
+  /* ---------------- PISTE B · Cockpit --------------------------- */
+  /* charcoal shell, cool light content, semantic status, medium radius */
+  .pb .db{background:#f6f7f9;color:#1a1d21}
+  .pb .side{background:#1c2024;color:#c7ccd2;border-right:1px solid #23272c}
+  .pb .brand{color:#fff}
+  .pb .brand .dot{background:#c4836a}
+  .pb nav a{color:#9aa1a9;border-radius:8px}
+  .pb nav a .ic{opacity:.7}
+  .pb nav a.on{background:#2a2f35;color:#fff;font-weight:600}
+  .pb nav a.on .ic{opacity:1}
+  .pb .divlab{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5f666e;padding:16px 11px 6px}
+  .pb .top{background:#fff;border-bottom:1px solid #e6e9ec}
+  .pb .top .sub{color:#7b828a}
+  .pb .who .av{background:#1c2024}
+  .pb .body{background:#f6f7f9}
+  .pb .kpi{background:#fff;border:1px solid #e6e9ec;border-radius:10px;border-top:3px solid #cfd6dd}
+  .pb .kpi.g{border-top-color:#2f9e6b}
+  .pb .kpi.a{border-top-color:#d99a2b}
+  .pb .kpi.n{border-top-color:#3a7ca5}
+  .pb .kpi .lab{color:#7b828a}
+  .pb .kpi .delta.up{color:#2f9e6b}
+  .pb .kpi .delta.flat{color:#7b828a}
+  .pb .card{background:#fff;border:1px solid #e6e9ec;border-radius:12px;--rl:#eef1f4}
+  .pb .card .ch .meta{color:#7b828a}
+  .pb .xr{color:#7b828a}
+  .pb .arr .day{color:#3a7ca5}
+  .pb .arr .info span{color:#7b828a}
+  .pb .arr .pill.confirmed{background:#e6f4ee;color:#1f7a4d}
+  .pb .arr .pill.pending{background:#fbf1de;color:#8a6414}
+  .pb table.res th{color:#7b828a}
+  .pb table.res .b{color:#1a1d21}
+  .pb .tag.ok{background:#e6f4ee;color:#1f7a4d}
+  .pb .tag.wait{background:#fbf1de;color:#8a6414}
+  .pb .tag.new{background:#e8f0f6;color:#2b6285}
+
+  /* ---------------- PISTE C · Ateliers pastel ------------------- */
+  /* cream ground, black hero, pastel section blocks, rounded & warm  */
+  .pc .db{background:#f7f3ec;color:#211d18}
+  .pc .side{background:#f7f3ec;border-right:1px solid #e9e2d5}
+  .pc .brand{color:#211d18}
+  .pc .brand .dot{background:#211d18;border-radius:8px}
+  .pc nav a{color:#6b6154;border-radius:12px}
+  .pc nav a.on{background:#211d18;color:#f7f3ec;font-weight:600}
+  .pc .top .sub{color:#8f8474}
+  .pc .who .av{background:#c4836a}
+  .pc .kpis{grid-template-columns:1.4fr 1fr 1fr 1fr}
+  .pc .kpi{border-radius:18px;background:#fff;border:1px solid #ece5d8}
+  .pc .kpi.hero{background:#211d18;color:#f7f3ec;border:none}
+  .pc .kpi.hero .lab{color:#a99f8f}
+  .pc .kpi.hero .val{font-size:30px}
+  .pc .kpi.sand{background:#f4e7dd}
+  .pc .kpi.sky{background:#e6eef5}
+  .pc .kpi.sage{background:#e7eee4}
+  .pc .kpi .lab{color:#8f8474}
+  .pc .kpi .ico{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:14px;margin-bottom:2px}
+  .pc .kpi .delta.up{color:#1f7a4d}
+  .pc .kpi .delta.flat{color:#8f8474}
+  .pc .card{border-radius:20px;--rl:rgba(33,29,24,.08)}
+  .pc .card.paper{background:#fff;border:1px solid #ece5d8}
+  .pc .card.tintsky{background:#e6eef5}
+  .pc .card .ch .meta{color:#8f8474}
+  .pc .xr{color:#8f8474}
+  .pc .arr .row{border-radius:12px}
+  .pc .arr .row + .row{border-top:none}
+  .pc .arr .day{color:#c4836a}
+  .pc .arr .info span{color:#8f8474}
+  .pc .arr .pill{background:#211d18;color:#f7f3ec}
+  .pc table.res th{color:#8f8474}
+  .pc table.res .b{color:#211d18}
+  .pc .tag.ok{background:#e7eee4;color:#3a6b45}
+  .pc .tag.wait{background:#f4e7dd;color:#8a5a3f}
+  .pc .tag.new{background:#e6eef5;color:#2f5f85}
+
+  /* ---------------- comparison table --------------------------- */
+  .compare{margin-top:72px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+  .compare table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .compare th,.compare td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .compare thead th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .compare tbody th{font-weight:600;color:var(--muted);width:150px}
+  .compare td{color:var(--ink)}
+  .compare tr:last-child td,.compare tr:last-child th{border-bottom:none}
+  .swatch{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:6px;border:1px solid rgba(0,0,0,.15)}
+
+  .foot{margin-top:40px;color:var(--muted);font-size:13px;max-width:62ch}
+
+  @media (prefers-reduced-motion:no-preference){
+    .stage{scroll-behavior:smooth}
+  }
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+  <header class="lede">
+    <p class="kicker">Zappart Pro · tableau de bord</p>
+    <h1>Trois partis pris pour l'écran d'accueil</h1>
+    <p>Même écran, même contenu, trois directions visuelles. L'objectif : sortir du
+      « tout blanc » sans trahir la charte Zappart (Maven&nbsp;Pro, noir, terracotta,
+      pastels). Chaque piste est montrée à l'échelle, avec de vraies données.</p>
+    <div class="legend">
+      <span><b>KPI</b> annonces en ligne · demandes à traiter · revenu 30 j · occupation</span>
+      <span><b>Contenu</b> revenu hebdo · prochaines arrivées · dernières réservations</span>
+    </div>
+  </header>
+
+  <!-- ================= PISTE A ================= -->
+  <section class="piste pa">
+    <div class="phead">
+      <span class="plabel">PISTE A</span>
+      <h2>Registre</h2>
+    </div>
+    <p class="pdesc">Blanc cassé froid, encre graphite, chiffres en chasse fixe,
+      angles nets, filets fins. La terracotta n'apparaît qu'en trait d'état actif.
+      <span class="pick">À choisir si</span> l'agence veut un outil sobre, dense,
+      qui se lit comme un livre de comptes.</p>
+    <div class="stage">
+      <div class="artboard">
+        <div class="db">
+          <aside class="side">
+            <div class="brand"><span class="dot">Z</span>Zappart</div>
+            <nav>
+              <a class="on" href="#a"><span class="ic">▦</span>Tableau de bord</a>
+              <a href="#a"><span class="ic">▤</span>Parc</a>
+              <a href="#a"><span class="ic">▥</span>Calendrier</a>
+              <a href="#a"><span class="ic">▧</span>Réservations<span class="sp"></span></a>
+              <a href="#a"><span class="ic">▨</span>Revenus</a>
+              <a href="#a"><span class="ic">▣</span>Paramètres</a>
+            </nav>
+          </aside>
+          <div class="main">
+            <div class="top">
+              <div>
+                <h3>Bonjour, Immobilière Teranga</h3>
+                <div class="sub">Lundi 1 septembre · 3 demandes en attente</div>
+              </div>
+              <div class="who"><span class="av">IT</span>Immobilière Teranga</div>
+            </div>
+            <div class="body">
+              <div class="kpis">
+                <div class="kpi"><span class="lab">Annonces en ligne</span><span class="val">18</span><span class="delta flat">— stable</span></div>
+                <div class="kpi alert"><span class="lab">Demandes à traiter</span><span class="val">03</span><span class="delta" style="color:#a2543a">à répondre &lt; 2 h</span></div>
+                <div class="kpi"><span class="lab">Revenu · 30 j</span><span class="val">2,45<small> M</small></span><span class="delta up">▲ 12 %</span></div>
+                <div class="kpi"><span class="lab">Occupation</span><span class="val">76<small> %</small></span><span class="delta up">▲ 4 pts</span></div>
+              </div>
+              <div class="grid2">
+                <div class="card">
+                  <div class="ch"><h4>Revenu hebdomadaire</h4><span class="meta">12 dernières semaines · FCFA</span></div>
+                  <div class="chartwrap">
+                    <svg viewBox="0 -8 600 176" role="img" aria-label="Revenu hebdomadaire, tendance à la hausse">
+                      <line x1="0" y1="150" x2="600" y2="150" stroke="#e7e8ea"/>
+                      <line x1="0" y1="80" x2="600" y2="80" stroke="#eef0f1"/>
+                      <line x1="0" y1="10" x2="600" y2="10" stroke="#eef0f1"/>
+                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22 L600,160 L0,160 Z" fill="#c4836a" fill-opacity="0.10"/>
+                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22" fill="none" stroke="#c4836a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="600" cy="22" r="3.6" fill="#c4836a"/>
+                    </svg>
+                    <div class="xr"><span>juin</span><span>juil.</span><span>août</span></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4</span></div>
+                  <div class="arr">
+                    <div class="row"><span class="day">MAR<br>02/09</span><span class="info"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="pill">14 h 00</span></div>
+                    <div class="row"><span class="day">MER<br>03/09</span><span class="info"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="pill">12 h 00</span></div>
+                    <div class="row"><span class="day">VEN<br>05/09</span><span class="info"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="pill">16 h 00</span></div>
+                    <div class="row"><span class="day">SAM<br>06/09</span><span class="info"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="pill">10 h 30</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout</span></div>
+                <table class="res">
+                  <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
+                  <tbody>
+                    <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="num">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
+                    <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="num">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
+                    <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="num">210 000</td><td><span class="tag new">Demande</span></td></tr>
+                    <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="num">15 000</td><td><span class="tag ok">Payée</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PISTE B ================= -->
+  <section class="piste pb">
+    <div class="phead">
+      <span class="plabel">PISTE B</span>
+      <h2>Cockpit</h2>
+    </div>
+    <p class="pdesc">Barre latérale charbon, zone de travail claire et légèrement
+      froide, statuts en couleur sémantique (vert / ambre), rayons moyens.
+      <span class="pick">À choisir si</span> l'agence passe la journée dedans et veut
+      un poste de pilotage lisible d'un coup d'œil.</p>
+    <div class="stage">
+      <div class="artboard">
+        <div class="db">
+          <aside class="side">
+            <div class="brand"><span class="dot">Z</span>Zappart</div>
+            <nav>
+              <div class="divlab">Pilotage</div>
+              <a class="on" href="#b"><span class="ic">◱</span>Tableau de bord</a>
+              <a href="#b"><span class="ic">◰</span>Réservations</a>
+              <a href="#b"><span class="ic">◲</span>Calendrier</a>
+              <div class="divlab">Gestion</div>
+              <a href="#b"><span class="ic">◳</span>Parc</a>
+              <a href="#b"><span class="ic">▦</span>Revenus</a>
+              <a href="#b"><span class="ic">⚙</span>Paramètres</a>
+            </nav>
+          </aside>
+          <div class="main">
+            <div class="top">
+              <div>
+                <h3>Tableau de bord</h3>
+                <div class="sub">Immobilière Teranga · mis à jour il y a 2 min</div>
+              </div>
+              <div class="who"><span class="av">IT</span>Immobilière Teranga</div>
+            </div>
+            <div class="body">
+              <div class="kpis">
+                <div class="kpi n"><span class="lab">Annonces en ligne</span><span class="val">18</span><span class="delta flat">2 en validation</span></div>
+                <div class="kpi a"><span class="lab">Demandes à traiter</span><span class="val">3</span><span class="delta" style="color:#8a6414">réponse attendue</span></div>
+                <div class="kpi g"><span class="lab">Revenu · 30 j</span><span class="val">2,45<small> M</small></span><span class="delta up">▲ 12 % vs. mois -1</span></div>
+                <div class="kpi g"><span class="lab">Occupation</span><span class="val">76<small> %</small></span><span class="delta up">▲ 4 pts</span></div>
+              </div>
+              <div class="grid2">
+                <div class="card">
+                  <div class="ch"><h4>Revenu hebdomadaire</h4><span class="meta">12 sem. · FCFA</span></div>
+                  <div class="chartwrap">
+                    <svg viewBox="0 -8 600 176" role="img" aria-label="Revenu hebdomadaire, tendance à la hausse">
+                      <line x1="0" y1="150" x2="600" y2="150" stroke="#e6e9ec"/>
+                      <line x1="0" y1="80" x2="600" y2="80" stroke="#eef1f4"/>
+                      <line x1="0" y1="10" x2="600" y2="10" stroke="#eef1f4"/>
+                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22 L600,160 L0,160 Z" fill="#3a7ca5" fill-opacity="0.12"/>
+                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22" fill="none" stroke="#3a7ca5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="600" cy="22" r="4" fill="#3a7ca5" stroke="#fff" stroke-width="2"/>
+                    </svg>
+                    <div class="xr"><span>juin</span><span>juillet</span><span>août</span></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4 à venir</span></div>
+                  <div class="arr">
+                    <div class="row"><span class="day">02<br>SEP</span><span class="info"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="pill confirmed">Confirmée</span></div>
+                    <div class="row"><span class="day">03<br>SEP</span><span class="info"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="pill confirmed">Confirmée</span></div>
+                    <div class="row"><span class="day">05<br>SEP</span><span class="info"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="pill pending">Acompte</span></div>
+                    <div class="row"><span class="day">06<br>SEP</span><span class="info"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="pill confirmed">Payée</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout →</span></div>
+                <table class="res">
+                  <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
+                  <tbody>
+                    <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="num">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
+                    <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="num">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
+                    <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="num">210 000</td><td><span class="tag new">Demande</span></td></tr>
+                    <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="num">15 000</td><td><span class="tag ok">Payée</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PISTE C ================= -->
+  <section class="piste pc">
+    <div class="phead">
+      <span class="plabel">PISTE C</span>
+      <h2>Ateliers pastel</h2>
+    </div>
+    <p class="pdesc">Fond crème, carte titre noire avec le chiffre clé, blocs pastel
+      (sable, ciel, sauge), cartes très arrondies, typo plus généreuse — le langage
+      de l'espace partenaire mobile porté sur grand écran.
+      <span class="pick">À choisir si</span> on veut que Zappart Pro se reconnaisse
+      immédiatement comme du Zappart.</p>
+    <div class="stage">
+      <div class="artboard">
+        <div class="db">
+          <aside class="side">
+            <div class="brand"><span class="dot">Z</span>Zappart</div>
+            <nav>
+              <a class="on" href="#c"><span class="ic">◆</span>Tableau de bord</a>
+              <a href="#c"><span class="ic">▤</span>Parc</a>
+              <a href="#c"><span class="ic">▦</span>Calendrier</a>
+              <a href="#c"><span class="ic">✦</span>Réservations</a>
+              <a href="#c"><span class="ic">◈</span>Revenus</a>
+              <a href="#c"><span class="ic">●</span>Paramètres</a>
+            </nav>
+          </aside>
+          <div class="main">
+            <div class="top">
+              <div>
+                <h3>Bonjour, Teranga 👋</h3>
+                <div class="sub">Voici votre activité du jour</div>
+              </div>
+              <div class="who"><span class="av">IT</span>Immobilière Teranga</div>
+            </div>
+            <div class="body">
+              <div class="kpis">
+                <div class="kpi hero">
+                  <span class="lab">Revenu · 30 jours</span>
+                  <span class="val">2 450 000 <small style="font-size:14px">FCFA</small></span>
+                  <span class="delta" style="color:#8fd0aa">▲ 12 % vs. mois dernier</span>
+                </div>
+                <div class="kpi sand"><span class="ico" style="background:#e6cdbc">🏠</span><span class="lab">Annonces</span><span class="val">18</span></div>
+                <div class="kpi sky"><span class="ico" style="background:#cfe0ee">📩</span><span class="lab">Demandes</span><span class="val">3</span></div>
+                <div class="kpi sage"><span class="ico" style="background:#d3e2cc">📊</span><span class="lab">Occupation</span><span class="val">76 %</span></div>
+              </div>
+              <div class="grid2">
+                <div class="card paper">
+                  <div class="ch"><h4>Revenu hebdomadaire</h4><span class="meta">12 dernières semaines</span></div>
+                  <div class="chartwrap">
+                    <svg viewBox="0 -8 600 176" role="img" aria-label="Revenu hebdomadaire, tendance à la hausse">
+                      <line x1="0" y1="150" x2="600" y2="150" stroke="#ece5d8"/>
+                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22 L600,160 L0,160 Z" fill="#c4836a" fill-opacity="0.16"/>
+                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22" fill="none" stroke="#c4836a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="600" cy="22" r="4.5" fill="#211d18"/>
+                    </svg>
+                    <div class="xr"><span>juin</span><span>juillet</span><span>août</span></div>
+                  </div>
+                </div>
+                <div class="card tintsky">
+                  <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4</span></div>
+                  <div class="arr">
+                    <div class="row"><span class="day">MAR<br>02/09</span><span class="info"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="pill">14 h</span></div>
+                    <div class="row"><span class="day">MER<br>03/09</span><span class="info"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="pill">12 h</span></div>
+                    <div class="row"><span class="day">VEN<br>05/09</span><span class="info"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="pill">16 h</span></div>
+                    <div class="row"><span class="day">SAM<br>06/09</span><span class="info"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="pill">10 h 30</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card paper">
+                <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout</span></div>
+                <table class="res">
+                  <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
+                  <tbody>
+                    <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="num">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
+                    <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="num">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
+                    <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="num">210 000</td><td><span class="tag new">Demande</span></td></tr>
+                    <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="num">15 000</td><td><span class="tag ok">Payée</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= COMPARE ================= -->
+  <div class="compare">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th>A · Registre</th><th>B · Cockpit</th><th>C · Ateliers pastel</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>Fond</th>
+          <td><span class="swatch" style="background:#fbfbfc"></span>blanc cassé froid</td>
+          <td><span class="swatch" style="background:#1c2024"></span>shell charbon + <span class="swatch" style="background:#f6f7f9"></span>gris clair</td>
+          <td><span class="swatch" style="background:#f7f3ec"></span>crème</td>
+        </tr>
+        <tr>
+          <th>Accent</th>
+          <td>terracotta, en filet seulement</td>
+          <td>terracotta (marque) + vert / ambre (état)</td>
+          <td>noir + pastels par bloc</td>
+        </tr>
+        <tr>
+          <th>Angles</th><td>4 px, nets</td><td>10–12 px</td><td>18–20 px</td>
+        </tr>
+        <tr>
+          <th>Densité</th><td>élevée, table-first</td><td>moyenne, carte + statut</td><td>aérée, gros chiffres</td>
+        </tr>
+        <tr>
+          <th>Chiffres</th><td>chasse fixe (IBM Plex Mono)</td><td>Maven Pro tabulaire</td><td>Maven Pro 800, grand</td>
+        </tr>
+        <tr>
+          <th>Ambiance</th><td>livre de comptes, sérieux</td><td>poste de pilotage</td><td>Zappart, chaleureux</td>
+        </tr>
+        <tr>
+          <th>Risque</th>
+          <td>peut sembler austère</td>
+          <td>le plus « SaaS générique »</td>
+          <td>demande de la rigueur pour ne pas faire brouillon</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="foot">Toutes les pistes gardent Maven&nbsp;Pro, la même grille (barre
+    latérale 212 px + contenu), les mêmes composants (KPI, graphe, liste, table) et
+    les mêmes statuts métier. Choisir une piste = fixer fond, accent, rayon et
+    densité ; le style des écrans suivants (Parc, Calendrier, Réservations…) en
+    découle.</p>
+</div>
