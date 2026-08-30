@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,9 +10,13 @@ import '../../data/dashboard_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 
-/// Écran d'accueil de Zappart Pro — noir / blanc / gris, Maven Pro.
-/// En-tête + rangée de 4 indicateurs, prochaines arrivées + répartition,
-/// dernières réservations. Données réelles, scopées à la fiche partenaire.
+/// Écran d'accueil de Zappart Pro — logiciel de gestion immobilière.
+/// Noir / blanc / gris, Maven Pro. Vise **mensuel + journalier à parité**.
+///
+/// Blocs : à traiter · argent (solde à retirer, en attente, revenu) ·
+/// occupation & parc · arrivées/départs · dernières réservations.
+/// Le volet « services / prestataire » reste sur mobile — un compte
+/// prestataire pur voit un simple encart.
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
@@ -19,147 +25,330 @@ class DashboardPage extends StatelessWidget {
     final auth = context.watch<AuthService>();
     final ref = auth.partenaireRef;
     if (ref == null) {
-      return const _Padded(child: _Empty(text: 'Fiche partenaire en cours de liaison…'));
+      return const _Padded(
+          child: _Empty(text: 'Fiche partenaire en cours de liaison…'));
     }
-    final repo = DashboardRepository(
-      ref,
-      estHote: auth.estHote,
-      estPrestataire: auth.estPrestataire,
-    );
+    final repo = DashboardRepository(ref, estHote: auth.estHote);
+    return _DashboardLoader(repo: repo, estHote: auth.estHote);
+  }
+}
 
-    return StreamBuilder<List<HouseLite>>(
-      stream: repo.houses(),
-      builder: (context, hSnap) {
-        return StreamBuilder<List<ResaLite>>(
-          stream: repo.reservations(),
-          builder: (context, rSnap) {
-            if (hSnap.hasError || rSnap.hasError) {
-              return const _Padded(
-                child: _Empty(
-                  text: 'Impossible de charger le tableau de bord. '
-                      'Vérifiez votre connexion.',
-                ),
-              );
-            }
-            if (!hSnap.hasData || !rSnap.hasData) {
-              return const _Padded(child: _Skeleton());
-            }
-            return _Body(
-              houses: hSnap.data!,
-              resas: rSnap.data!,
-              estHote: auth.estHote,
-            );
-          },
-        );
-      },
+// ── Chargement combiné des flux ──────────────────────────────────────────
+class _DashboardLoader extends StatefulWidget {
+  const _DashboardLoader({required this.repo, required this.estHote});
+  final DashboardRepository repo;
+  final bool estHote;
+
+  @override
+  State<_DashboardLoader> createState() => _DashboardLoaderState();
+}
+
+class _DashboardLoaderState extends State<_DashboardLoader> {
+  final _subs = <StreamSubscription>[];
+  PartenaireLite? _part;
+  List<WalletLine>? _wallet;
+  List<RetraitLine>? _retraits;
+  List<HouseLite>? _houses;
+  List<ResaLite>? _resas;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    void bind<T>(Stream<T> s, void Function(T) set) {
+      _subs.add(s.listen((v) {
+        if (mounted) setState(() => set(v));
+      }, onError: (_) {
+        if (mounted) setState(() => _error = true);
+      }));
+    }
+
+    bind(widget.repo.partenaire(), (v) => _part = v);
+    bind(widget.repo.walletLedger(), (v) => _wallet = v);
+    bind(widget.repo.retraits(), (v) => _retraits = v);
+    bind(widget.repo.houses(), (v) => _houses = v);
+    bind(widget.repo.reservations(), (v) => _resas = v);
+  }
+
+  @override
+  void dispose() {
+    for (final s in _subs) {
+      s.cancel();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error) {
+      return const _Padded(
+        child: _Empty(
+          text: 'Impossible de charger le tableau de bord. '
+              'Vérifiez votre connexion.',
+        ),
+      );
+    }
+    final ready = _part != null &&
+        _wallet != null &&
+        _retraits != null &&
+        _houses != null &&
+        _resas != null;
+    if (!ready) return const _Padded(child: _Skeleton());
+
+    if (!widget.estHote) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(28, 22, 28, 40),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(nom: _part!.nom, tacheCount: 0),
+            const SizedBox(height: 20),
+            const _InfoCard(
+              text: 'Votre compte est prestataire de services. La gestion de '
+                  'vos missions se fait dans l\'application mobile Zappart.',
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _Body(
+      part: _part!,
+      wallet: _wallet!,
+      retraits: _retraits!,
+      houses: _houses!,
+      resas: _resas!,
     );
   }
 }
 
+// ── Corps ────────────────────────────────────────────────────────────────
 class _Body extends StatelessWidget {
   const _Body({
+    required this.part,
+    required this.wallet,
+    required this.retraits,
     required this.houses,
     required this.resas,
-    required this.estHote,
   });
+
+  final PartenaireLite part;
+  final List<WalletLine> wallet;
+  final List<RetraitLine> retraits;
   final List<HouseLite> houses;
   final List<ResaLite> resas;
-  final bool estHote;
+
+  static final _fmt = NumberFormat.decimalPattern('fr');
+  static String _fcfa(num v) => '${_fmt.format(v.round())} FCFA';
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+
+    // ---- parc ----
     final vivantes =
         houses.where((h) => h.statutValidation != 'supprimee').toList();
-    final enLigne = vivantes.where((h) => h.enLigne).length;
+    final enLigne = vivantes.where((h) => h.enLigne).toList();
     final enValidation = vivantes.where((h) => h.enValidation).length;
     final rejetees = vivantes.where((h) => h.rejetee).length;
+    final journaliers =
+        enLigne.where((h) => h.locationType == 'Journalier').toList();
+    final mensuels =
+        enLigne.where((h) => h.locationType == 'Mensuel').toList();
 
+    // ---- tâches ----
     final demandes = resas.where((r) => r.demandeAccord).length;
-    final resa30j = resas
+    final visitesSemaine = resas
         .where((r) =>
-            r.dateCreated != null &&
-            now.difference(r.dateCreated!).inDays <= 30 &&
-            now.difference(r.dateCreated!).inDays >= 0)
+            r.typeCourt == 'Visite' &&
+            r.dateDebut != null &&
+            r.dateDebut!.isAfter(now.subtract(const Duration(hours: 12))) &&
+            r.dateDebut!.isBefore(now.add(const Duration(days: 7))))
+        .length;
+    final taches = <_Tache>[
+      if (demandes > 0)
+        _Tache('$demandes demande${demandes > 1 ? 's' : ''} de réservation',
+            'à accepter ou refuser', () => context.go('/reservations')),
+      if (visitesSemaine > 0)
+        _Tache('$visitesSemaine visite${visitesSemaine > 1 ? 's' : ''} cette semaine',
+            'clients qui viennent voir un bien',
+            () => context.go('/calendrier')),
+      if (rejetees > 0)
+        _Tache('$rejetees annonce${rejetees > 1 ? 's' : ''} rejetée${rejetees > 1 ? 's' : ''}',
+            'à corriger pour repasser en ligne', () => context.go('/parc')),
+    ];
+
+    // ---- argent ----
+    final walletActif = wallet.where((w) => w.actif).toList();
+    final enAttente = walletActif
+        .where((w) => w.enAttente)
+        .fold<double>(0, (s, w) => s + w.montant);
+    final revenu30j = walletActif
+        .where((w) =>
+            w.dateEncaissement != null &&
+            now.difference(w.dateEncaissement!).inDays.abs() <= 30)
+        .fold<double>(0, (s, w) => s + w.montant);
+    final retraitEnCours =
+        retraits.where((r) => r.status == 'a_payer').fold<int>(0, (s, r) => s + r.montant);
+
+    // ---- occupation journalier (30 j) ----
+    final nuits = resas
+        .where((r) =>
+            r.typeCourt == 'Journalier' &&
+            r.status != 'Annulée' &&
+            r.dateDebut != null &&
+            r.dateSorti != null &&
+            r.dateDebut!.isAfter(now.subtract(const Duration(days: 30))))
+        .fold<int>(
+            0, (s, r) => s + r.dateSorti!.difference(r.dateDebut!).inDays.clamp(0, 30));
+    final capacite = journaliers.length * 30;
+    final tauxJournalier = capacite > 0 ? (nuits / capacite).clamp(0.0, 1.0) : null;
+
+    // ---- mensuel loués ----
+    final mensuelIds = mensuels.map((h) => h.id).toSet();
+    final loues = resas
+        .where((r) =>
+            r.typeCourt == 'Mensuel' &&
+            (r.status == 'Réservée' || r.status == 'Soldée') &&
+            r.houseId != null &&
+            mensuelIds.contains(r.houseId))
+        .map((r) => r.houseId)
+        .toSet()
         .length;
 
-    final arrivees = resas.where((r) => r.aVenir).toList()
-      ..sort((a, b) => (a.dateDebut ?? a.dateSorti ?? now)
-          .compareTo(b.dateDebut ?? b.dateSorti ?? now));
+    // ---- arrivées / départs 7 j ----
+    final mouvements = <_Mouvement>[];
+    for (final r in resas) {
+      if (r.typeCourt != 'Journalier' || r.status == 'Annulée') continue;
+      final din = r.dateDebut, dout = r.dateSorti;
+      if (din != null &&
+          din.isAfter(now.subtract(const Duration(hours: 12))) &&
+          din.isBefore(now.add(const Duration(days: 7)))) {
+        mouvements.add(_Mouvement(din, true, r.clientNom));
+      }
+      if (dout != null &&
+          dout.isAfter(now.subtract(const Duration(hours: 12))) &&
+          dout.isBefore(now.add(const Duration(days: 7)))) {
+        mouvements.add(_Mouvement(dout, false, r.clientNom));
+      }
+    }
+    mouvements.sort((a, b) => a.date.compareTo(b.date));
 
-    final recentes = [...resas]..sort((a, b) =>
-        (b.dateCreated ?? DateTime(2000)).compareTo(a.dateCreated ?? DateTime(2000)));
-
-    final repartition = <String, int>{
-      'Visite': resas.where((r) => r.typeCourt == 'Visite').length,
-      'Journalier': resas.where((r) => r.typeCourt == 'Journalier').length,
-      'Mensuel': resas.where((r) => r.typeCourt == 'Mensuel').length,
-      'Service': resas.where((r) => r.typeCourt == 'Service').length,
-    };
+    // ---- dernières réservations (mensuel + journalier, pas les visites) ----
+    final ventes = resas
+        .where((r) => r.typeCourt == 'Journalier' || r.typeCourt == 'Mensuel')
+        .toList()
+      ..sort((a, b) => (b.dateCreated ?? DateTime(2000))
+          .compareTo(a.dateCreated ?? DateTime(2000)));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(28, 22, 28, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Header(demandes: demandes),
+          _Header(nom: part.nom, tacheCount: taches.length),
           const SizedBox(height: 20),
-          if (!estHote) ...[
-            const _InfoCard(
-              text: 'Votre compte est prestataire de services. Le suivi de vos '
-                  'missions arrivera bientôt dans un écran dédié.',
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (demandes > 0 || rejetees > 0) ...[
-            _AlertBanner(
-              text: demandes > 0
-                  ? (demandes > 1
-                      ? '$demandes demandes à valider'
-                      : 'Une demande à valider')
-                  : (rejetees > 1
-                      ? '$rejetees annonces à corriger'
-                      : 'Une annonce à corriger'),
-              hint: demandes > 0
-                  ? 'Confirmez votre disponibilité'
-                  : 'Elles ont été refusées à la validation',
-              onTap: () =>
-                  context.go(demandes > 0 ? '/reservations' : '/parc'),
-            ),
-            const SizedBox(height: 16),
-          ],
-          _StatRow(
-            items: [
-              _Stat('Annonces en ligne', '$enLigne',
-                  hint: enValidation > 0 ? '$enValidation en validation' : 'à jour'),
-              _Stat('Demandes à traiter', '$demandes',
-                  hint: demandes > 0 ? 'réponse attendue' : 'rien en attente',
-                  emphasize: demandes > 0),
-              _Stat('Réservations · 30 j', '$resa30j', hint: 'toutes catégories'),
-              _Stat('Total annonces', '${vivantes.length}',
-                  hint: rejetees > 0 ? '$rejetees rejetée(s)' : 'parc actif'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, c) {
-              final stack = c.maxWidth < 900;
-              final left = _ArriveesCard(arrivees: arrivees);
-              final right = _RepartitionCard(data: repartition, total: resas.length);
-              return stack
-                  ? Column(children: [left, const SizedBox(height: 16), right])
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 3, child: left),
-                        const SizedBox(width: 16),
-                        Expanded(flex: 2, child: right),
+
+          // ── À traiter ───────────────────────────────────────────────
+          _Card(
+            title: 'À traiter',
+            child: taches.isEmpty
+                ? Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline,
+                          size: 18, color: AppTheme.inkSoft),
+                      const SizedBox(width: 8),
+                      Text('Tout est à jour.',
+                          style: GoogleFonts.mavenPro(
+                              fontSize: 13.5, color: AppTheme.inkSoft)),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      for (var i = 0; i < taches.length; i++) ...[
+                        if (i > 0) const Divider(height: 1),
+                        _TacheRow(taches[i]),
                       ],
-                    );
-            },
+                    ],
+                  ),
           ),
           const SizedBox(height: 16),
-          _RecentesCard(resas: recentes.take(6).toList()),
+
+          // ── Argent ──────────────────────────────────────────────────
+          LayoutBuilder(builder: (context, c) {
+            final cols = c.maxWidth < 720 ? 2 : 4;
+            final gap = 14.0;
+            final w = (c.maxWidth - gap * (cols - 1)) / cols;
+            return Wrap(spacing: gap, runSpacing: gap, children: [
+              SizedBox(
+                width: w,
+                child: _MoneyCard(
+                  label: 'Solde disponible',
+                  value: _fcfa(part.soldeDisponible),
+                  hint: retraitEnCours > 0
+                      ? 'retrait de ${_fcfa(retraitEnCours)} en cours'
+                      : 'prêt à retirer',
+                  dark: true,
+                  action: part.soldeDisponible > 0
+                      ? ('Retirer', () => context.go('/revenus'))
+                      : null,
+                ),
+              ),
+              SizedBox(
+                width: w,
+                child: _MoneyCard(
+                  label: 'En attente',
+                  value: _fcfa(enAttente),
+                  hint: 'se débloque après les séjours',
+                ),
+              ),
+              SizedBox(
+                width: w,
+                child: _MoneyCard(
+                  label: 'Revenu · 30 j',
+                  value: _fcfa(revenu30j),
+                  hint: 'encaissé via Zappart',
+                ),
+              ),
+              SizedBox(
+                width: w,
+                child: _MoneyCard(
+                  label: 'Annonces en ligne',
+                  value: '${enLigne.length}',
+                  hint: enValidation > 0
+                      ? '$enValidation en validation'
+                      : 'sur le marketplace',
+                ),
+              ),
+            ]);
+          }),
+          const SizedBox(height: 16),
+
+          // ── Occupation & arrivées ───────────────────────────────────
+          LayoutBuilder(builder: (context, c) {
+            final stack = c.maxWidth < 900;
+            final occ = _OccupationCard(
+              tauxJournalier: tauxJournalier,
+              nbJournalier: journaliers.length,
+              mensuelEnLigne: mensuels.length,
+              mensuelLoues: loues,
+            );
+            final mov = _MouvementsCard(mouvements: mouvements);
+            return stack
+                ? Column(children: [occ, const SizedBox(height: 16), mov])
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 2, child: occ),
+                      const SizedBox(width: 16),
+                      Expanded(flex: 3, child: mov),
+                    ],
+                  );
+          }),
+          const SizedBox(height: 16),
+
+          // ── Dernières réservations ──────────────────────────────────
+          _VentesCard(ventes: ventes.take(6).toList()),
         ],
       ),
     );
@@ -168,8 +357,9 @@ class _Body extends StatelessWidget {
 
 // ── En-tête ──────────────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
-  const _Header({required this.demandes});
-  final int demandes;
+  const _Header({required this.nom, required this.tacheCount});
+  final String nom;
+  final int tacheCount;
 
   @override
   Widget build(BuildContext context) {
@@ -182,10 +372,11 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Tableau de bord', style: AppTheme.h1),
+              Text(nom.isEmpty ? 'Tableau de bord' : 'Bonjour, $nom',
+                  style: AppTheme.h1),
               const SizedBox(height: 3),
               Text(
-                '$today${demandes > 0 ? ' · $demandes demande${demandes > 1 ? 's' : ''} en attente' : ''}',
+                '$today${tacheCount > 0 ? ' · $tacheCount élément${tacheCount > 1 ? 's' : ''} à traiter' : ''}',
                 style: AppTheme.label,
               ),
             ],
@@ -209,89 +400,74 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ── Bandeau d'alerte ─────────────────────────────────────────────────────
-class _AlertBanner extends StatelessWidget {
-  const _AlertBanner({required this.text, required this.hint, this.onTap});
-  final String text;
+// ── Tâches ───────────────────────────────────────────────────────────────
+class _Tache {
+  _Tache(this.title, this.hint, this.onTap);
+  final String title;
   final String hint;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
+}
+
+class _TacheRow extends StatelessWidget {
+  const _TacheRow(this.t);
+  final _Tache t;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppTheme.ink,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          child: Row(
-            children: [
-              const Icon(Icons.notifications_active_outlined,
-                  color: Colors.white, size: 18),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(text,
-                        style: GoogleFonts.mavenPro(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700)),
-                    Text(hint,
-                        style: GoogleFonts.mavenPro(
-                            color: Colors.white70, fontSize: 12)),
-                  ],
-                ),
+    return InkWell(
+      onTap: t.onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                  color: AppTheme.ink, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.title,
+                      style: GoogleFonts.mavenPro(
+                          fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  Text(t.hint,
+                      style: GoogleFonts.mavenPro(
+                          fontSize: 11.5, color: AppTheme.inkSoft)),
+                ],
               ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.white54),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppTheme.inkSoft),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Rangée d'indicateurs ─────────────────────────────────────────────────
-class _Stat {
-  _Stat(this.label, this.value, {required this.hint, this.emphasize = false});
+// ── Carte argent ─────────────────────────────────────────────────────────
+class _MoneyCard extends StatelessWidget {
+  const _MoneyCard({
+    required this.label,
+    required this.value,
+    required this.hint,
+    this.dark = false,
+    this.action,
+  });
   final String label;
   final String value;
   final String hint;
-  final bool emphasize;
-}
-
-class _StatRow extends StatelessWidget {
-  const _StatRow({required this.items});
-  final List<_Stat> items;
+  final bool dark;
+  final (String, VoidCallback)? action;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final cols = c.maxWidth < 720 ? 2 : 4;
-      final gap = 14.0;
-      final w = (c.maxWidth - gap * (cols - 1)) / cols;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [
-          for (final s in items) SizedBox(width: w, child: _StatCard(s)),
-        ],
-      );
-    });
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard(this.s);
-  final _Stat s;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = s.emphasize;
+    final fg = dark ? Colors.white : AppTheme.ink;
+    final sub = dark ? Colors.white70 : AppTheme.inkSoft;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -302,91 +478,168 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(s.label.toUpperCase(),
+          Text(label.toUpperCase(),
               style: GoogleFonts.mavenPro(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.4,
-                color: dark ? Colors.white70 : AppTheme.inkSoft,
-              )),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                  color: sub)),
           const SizedBox(height: 8),
-          Text(s.value,
-              style: GoogleFonts.mavenPro(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-                color: dark ? Colors.white : AppTheme.ink,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              )),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value,
+                style: GoogleFonts.mavenPro(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: fg,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
+          ),
           const SizedBox(height: 3),
-          Text(s.hint,
-              style: GoogleFonts.mavenPro(
-                fontSize: 11.5,
-                color: dark ? Colors.white60 : AppTheme.inkSoft,
-              )),
+          Text(hint,
+              style: GoogleFonts.mavenPro(fontSize: 11.5, color: sub)),
+          if (action != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 32,
+              child: FilledButton(
+                onPressed: action!.$2,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppTheme.ink,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(9)),
+                  textStyle: GoogleFonts.mavenPro(
+                      fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                child: Text(action!.$1),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-// ── Carte générique ──────────────────────────────────────────────────────
-class _Card extends StatelessWidget {
-  const _Card({required this.title, this.trailing, required this.child});
-  final String title;
-  final Widget? trailing;
-  final Widget child;
+// ── Occupation & parc ────────────────────────────────────────────────────
+class _OccupationCard extends StatelessWidget {
+  const _OccupationCard({
+    required this.tauxJournalier,
+    required this.nbJournalier,
+    required this.mensuelEnLigne,
+    required this.mensuelLoues,
+  });
+  final double? tauxJournalier;
+  final int nbJournalier;
+  final int mensuelEnLigne;
+  final int mensuelLoues;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.line),
-      ),
+    return _Card(
+      title: 'Occupation du parc',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(title,
+          if (tauxJournalier != null) ...[
+            Text('JOURNALIER · 30 JOURS',
+                style: GoogleFonts.mavenPro(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: AppTheme.inkSoft)),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('${(tauxJournalier! * 100).round()}',
                     style: GoogleFonts.mavenPro(
-                        fontSize: 14.5, fontWeight: FontWeight.w700)),
+                        fontSize: 30, fontWeight: FontWeight.w800)),
+                Text(' %  taux d\'occupation',
+                    style: GoogleFonts.mavenPro(
+                        fontSize: 12.5, color: AppTheme.inkSoft)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: tauxJournalier!.clamp(0.02, 1),
+                minHeight: 7,
+                backgroundColor: AppTheme.panel,
+                valueColor: const AlwaysStoppedAnimation(AppTheme.ink),
               ),
-              if (trailing != null) trailing!,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text('$nbJournalier bien${nbJournalier > 1 ? 's' : ''} journalier',
+                  style: GoogleFonts.mavenPro(
+                      fontSize: 11, color: AppTheme.inkSoft)),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Text('MENSUEL',
+              style: GoogleFonts.mavenPro(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                  color: AppTheme.inkSoft)),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text('$mensuelLoues',
+                  style: GoogleFonts.mavenPro(
+                      fontSize: 30, fontWeight: FontWeight.w800)),
+              Text(' / $mensuelEnLigne loués',
+                  style: GoogleFonts.mavenPro(
+                      fontSize: 12.5, color: AppTheme.inkSoft)),
             ],
           ),
-          const SizedBox(height: 14),
-          child,
+          if (mensuelEnLigne == 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('aucun bien mensuel en ligne',
+                  style: GoogleFonts.mavenPro(
+                      fontSize: 11, color: AppTheme.inkSoft)),
+            ),
         ],
       ),
     );
   }
 }
 
-// ── Prochaines arrivées ──────────────────────────────────────────────────
-class _ArriveesCard extends StatelessWidget {
-  const _ArriveesCard({required this.arrivees});
-  final List<ResaLite> arrivees;
+// ── Arrivées / départs ───────────────────────────────────────────────────
+class _Mouvement {
+  _Mouvement(this.date, this.arrivee, this.client);
+  final DateTime date;
+  final bool arrivee;
+  final String client;
+}
+
+class _MouvementsCard extends StatelessWidget {
+  const _MouvementsCard({required this.mouvements});
+  final List<_Mouvement> mouvements;
 
   @override
   Widget build(BuildContext context) {
-    final items = arrivees.take(6).toList();
+    final items = mouvements.take(7).toList();
     return _Card(
-      title: 'Prochaines arrivées',
-      trailing: Text('${arrivees.length}',
+      title: 'Arrivées & départs · 7 jours',
+      trailing: Text('${mouvements.length}',
           style: GoogleFonts.mavenPro(fontSize: 12, color: AppTheme.inkSoft)),
       child: items.isEmpty
-          ? const _Empty(text: 'Aucune arrivée programmée.')
+          ? const _Empty(text: 'Rien de prévu cette semaine.')
           : Column(
               children: [
                 for (var i = 0; i < items.length; i++) ...[
                   if (i > 0) const Divider(height: 1),
-                  _ArriveeRow(items[i]),
+                  _MouvementRow(items[i]),
                 ],
               ],
             ),
@@ -394,156 +647,52 @@ class _ArriveesCard extends StatelessWidget {
   }
 }
 
-class _ArriveeRow extends StatelessWidget {
-  const _ArriveeRow(this.r);
-  final ResaLite r;
+class _MouvementRow extends StatelessWidget {
+  const _MouvementRow(this.m);
+  final _Mouvement m;
 
   @override
   Widget build(BuildContext context) {
-    final d = r.dateDebut ?? r.dateSorti;
-    final jour = d == null
-        ? '—'
-        : DateFormat('EEE\ndd/MM', 'fr').format(d).toUpperCase();
-    final heure = d == null ? '' : DateFormat('HH\'h\'mm', 'fr').format(d);
+    final jour = DateFormat('EEE dd/MM', 'fr').format(m.date).toUpperCase();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          SizedBox(
-            width: 52,
-            child: Text(jour,
-                textAlign: TextAlign.center,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: m.arrivee ? AppTheme.ink : AppTheme.panel,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(m.arrivee ? 'Arrivée' : 'Départ',
                 style: GoogleFonts.mavenPro(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    height: 1.25,
-                    color: AppTheme.inkSoft)),
+                    color: m.arrivee ? Colors.white : AppTheme.ink)),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  r.clientNom.isEmpty ? 'Client' : r.clientNom,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.mavenPro(
-                      fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                Text('${r.typeCourt} · ${r.status}',
-                    style: GoogleFonts.mavenPro(
-                        fontSize: 11.5, color: AppTheme.inkSoft)),
-              ],
-            ),
-          ),
-          if (heure.isNotEmpty)
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppTheme.panel,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(heure,
-                  style: GoogleFonts.mavenPro(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.ink)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Répartition par type ─────────────────────────────────────────────────
-class _RepartitionCard extends StatelessWidget {
-  const _RepartitionCard({required this.data, required this.total});
-  final Map<String, int> data;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    final max = data.values.fold<int>(1, (a, b) => b > a ? b : a);
-    const shades = [
-      Color(0xFF141414),
-      Color(0xFF5C5C5C),
-      Color(0xFF9A9A9A),
-      Color(0xFFD0D0D0),
-    ];
-    final entries = data.entries.toList();
-    return _Card(
-      title: 'Répartition des réservations',
-      trailing: Text('$total au total',
-          style: GoogleFonts.mavenPro(fontSize: 12, color: AppTheme.inkSoft)),
-      child: Column(
-        children: [
-          for (var i = 0; i < entries.length; i++) ...[
-            if (i > 0) const SizedBox(height: 14),
-            _Bar(
-              label: entries[i].key,
-              value: entries[i].value,
-              fraction: entries[i].value / max,
-              color: shades[i % shades.length],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Bar extends StatelessWidget {
-  const _Bar({
-    required this.label,
-    required this.value,
-    required this.fraction,
-    required this.color,
-  });
-  final String label;
-  final int value;
-  final double fraction;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(label,
-                  style: GoogleFonts.mavenPro(
-                      fontSize: 12.5, fontWeight: FontWeight.w500)),
-            ),
-            Text('$value',
+            child: Text(m.client.isEmpty ? 'Client' : m.client,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.mavenPro(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: const [FontFeature.tabularFigures()])),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: fraction.clamp(0.02, 1),
-            minHeight: 7,
-            backgroundColor: AppTheme.panel,
-            valueColor: AlwaysStoppedAnimation(color),
+                    fontSize: 13, fontWeight: FontWeight.w600)),
           ),
-        ),
-      ],
+          Text(jour,
+              style: GoogleFonts.mavenPro(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.inkSoft)),
+        ],
+      ),
     );
   }
 }
 
 // ── Dernières réservations ───────────────────────────────────────────────
-class _RecentesCard extends StatelessWidget {
-  const _RecentesCard({required this.resas});
-  final List<ResaLite> resas;
+class _VentesCard extends StatelessWidget {
+  const _VentesCard({required this.ventes});
+  final List<ResaLite> ventes;
 
   @override
   Widget build(BuildContext context) {
@@ -557,63 +706,60 @@ class _RecentesCard extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Text('voir tout',
-            style: GoogleFonts.mavenPro(
-                fontSize: 12, color: AppTheme.inkSoft)),
+            style:
+                GoogleFonts.mavenPro(fontSize: 12, color: AppTheme.inkSoft)),
       ),
-      child: resas.isEmpty
+      child: ventes.isEmpty
           ? const _Empty(text: 'Aucune réservation pour le moment.')
           : Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      _th('Client', flex: 3),
-                      _th('Type', flex: 2),
-                      _th('Statut', flex: 2),
-                      _th('Montant', flex: 2, right: true),
-                    ],
-                  ),
+                  child: Row(children: [
+                    _th('Client', flex: 3),
+                    _th('Type', flex: 2),
+                    _th('Statut', flex: 2),
+                    _th('Montant', flex: 2, right: true),
+                  ]),
                 ),
-                for (final r in resas) ...[
+                for (final r in ventes) ...[
                   const Divider(height: 1),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 11),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            r.clientNom.isEmpty ? 'Client' : r.clientNom,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.mavenPro(
-                                fontSize: 12.5, fontWeight: FontWeight.w600),
-                          ),
+                    child: Row(children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          r.clientNom.isEmpty ? 'Client' : r.clientNom,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.mavenPro(
+                              fontSize: 12.5, fontWeight: FontWeight.w600),
                         ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(r.typeCourt,
-                              style: GoogleFonts.mavenPro(fontSize: 12.5)),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(r.typeCourt,
+                            style: GoogleFonts.mavenPro(fontSize: 12.5)),
+                      ),
+                      Expanded(flex: 2, child: _StatusPill(r.status)),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          r.prix == null || r.prix == 0
+                              ? '—'
+                              : NumberFormat.decimalPattern('fr')
+                                  .format(r.prix),
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.mavenPro(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures()
+                              ]),
                         ),
-                        Expanded(flex: 2, child: _StatusPill(r.status)),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            r.prix == null || r.prix == 0
-                                ? '—'
-                                : NumberFormat.decimalPattern('fr').format(r.prix),
-                            textAlign: TextAlign.right,
-                            style: GoogleFonts.mavenPro(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures()
-                                ]),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ]),
                   ),
                 ],
               ],
@@ -655,7 +801,7 @@ class _StatusPill extends StatelessWidget {
         bg = const Color(0xFFF3E8E6);
         fg = const Color(0xFF8A4033);
         break;
-      default: // En attente
+      default:
         bg = const Color(0xFFECECEC);
         fg = const Color(0xFF5A5A5A);
     }
@@ -673,15 +819,49 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
+// ── Carte générique ──────────────────────────────────────────────────────
+class _Card extends StatelessWidget {
+  const _Card({required this.title, this.trailing, required this.child});
+  final String title;
+  final Widget? trailing;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(
+              child: Text(title,
+                  style: GoogleFonts.mavenPro(
+                      fontSize: 14.5, fontWeight: FontWeight.w700)),
+            ),
+            if (trailing != null) trailing!,
+          ]),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
 // ── Utilitaires ──────────────────────────────────────────────────────────
 class _Padded extends StatelessWidget {
   const _Padded({required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(28, 22, 28, 40),
-        child: child,
-      );
+  Widget build(BuildContext context) =>
+      Padding(padding: const EdgeInsets.fromLTRB(28, 22, 28, 40), child: child);
 }
 
 class _Empty extends StatelessWidget {
@@ -694,8 +874,8 @@ class _Empty extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(text,
             textAlign: TextAlign.center,
-            style: GoogleFonts.mavenPro(
-                fontSize: 13.5, color: AppTheme.inkSoft)),
+            style:
+                GoogleFonts.mavenPro(fontSize: 13.5, color: AppTheme.inkSoft)),
       );
 }
 
@@ -707,12 +887,10 @@ class _InfoCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.panel,
-          borderRadius: BorderRadius.circular(14),
-        ),
+            color: AppTheme.panel, borderRadius: BorderRadius.circular(14)),
         child: Text(text,
-            style: GoogleFonts.mavenPro(
-                fontSize: 13, color: AppTheme.inkSoft)),
+            style:
+                GoogleFonts.mavenPro(fontSize: 13, color: AppTheme.inkSoft)),
       );
 }
 
@@ -724,13 +902,11 @@ class _Skeleton extends StatelessWidget {
           height: h,
           margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
-            color: AppTheme.panel,
-            borderRadius: BorderRadius.circular(14),
-          ),
+              color: AppTheme.panel, borderRadius: BorderRadius.circular(14)),
         );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [box(46), const SizedBox(height: 10), box(96), box(240), box(260)],
+      children: [box(46), const SizedBox(height: 10), box(90), box(110), box(220), box(240)],
     );
   }
 }

@@ -15,6 +15,31 @@ class DashboardRepository {
   final bool estPrestataire;
   final _db = FirebaseFirestore.instance;
 
+  /// Fiche partenaire (nom, solde disponible dénormalisé).
+  Stream<PartenaireLite> partenaire() => partenaireRef.snapshots().map((s) {
+        final m = s.data() ?? const {};
+        return PartenaireLite(
+          nom: (m['nom'] as String?)?.trim() ?? '',
+          soldeDisponible: (m['solde_disponible'] as num?)?.toInt() ?? 0,
+        );
+      });
+
+  /// Lignes du wallet (encaissements en ligne — journalier/service).
+  Stream<List<WalletLine>> walletLedger() => _db
+      .collection('wallet_ledger')
+      .where('partenaire_ref', isEqualTo: partenaireRef)
+      .limit(200)
+      .snapshots()
+      .map((s) => s.docs.map(WalletLine.fromDoc).toList());
+
+  /// Demandes de retrait de ce partenaire.
+  Stream<List<RetraitLine>> retraits() => _db
+      .collection('retraits_partenaires')
+      .where('partenaire_ref', isEqualTo: partenaireRef)
+      .limit(50)
+      .snapshots()
+      .map((s) => s.docs.map(RetraitLine.fromDoc).toList());
+
   Stream<List<HouseLite>> houses() {
     if (!estHote) return Stream.value(const []);
     return _db
@@ -36,6 +61,56 @@ class DashboardRepository {
         .limit(200)
         .snapshots()
         .map((s) => s.docs.map(ResaLite.fromDoc).toList());
+  }
+}
+
+class PartenaireLite {
+  PartenaireLite({required this.nom, required this.soldeDisponible});
+  final String nom;
+  final int soldeDisponible;
+}
+
+class WalletLine {
+  WalletLine({
+    required this.montant,
+    required this.type,
+    required this.statut,
+    required this.dateEncaissement,
+  });
+  final double montant;
+  final String type; // 'journalier' | 'service'
+  final String statut; // 'en_attente' | 'disponible' | 'annulee'
+  final DateTime? dateEncaissement;
+
+  bool get enAttente => statut == 'en_attente';
+  bool get actif => statut != 'annulee';
+
+  static WalletLine fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data();
+    return WalletLine(
+      montant: (m['montant'] as num?)?.toDouble() ?? 0,
+      type: (m['type'] as String?)?.trim() ?? '',
+      statut: (m['statut'] as String?)?.trim() ?? 'en_attente',
+      dateEncaissement: m['date_encaissement'] is Timestamp
+          ? (m['date_encaissement'] as Timestamp).toDate()
+          : null,
+    );
+  }
+}
+
+class RetraitLine {
+  RetraitLine({required this.montant, required this.status, required this.date});
+  final int montant;
+  final String status; // a_payer | paye | rejete
+  final DateTime? date;
+
+  static RetraitLine fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data();
+    return RetraitLine(
+      montant: (m['montant'] as num?)?.toInt() ?? 0,
+      status: (m['status'] as String?)?.trim() ?? 'a_payer',
+      date: m['date'] is Timestamp ? (m['date'] as Timestamp).toDate() : null,
+    );
   }
 }
 
@@ -100,6 +175,7 @@ class ResaLite {
     required this.dateDebut,
     required this.dateSorti,
     required this.dateCreated,
+    required this.houseId,
   });
 
   final String id;
@@ -111,6 +187,7 @@ class ResaLite {
   final DateTime? dateDebut;
   final DateTime? dateSorti;
   final DateTime? dateCreated;
+  final String? houseId;
 
   static const _accordables = {'Reservation visite', 'Reservation journalière'};
   static const _clos = {'Terminée', 'Annulée'};
@@ -143,6 +220,7 @@ class ResaLite {
   static ResaLite fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data();
     DateTime? ts(dynamic v) => v is Timestamp ? v.toDate() : null;
+    final hr = m['HouseRef'];
     return ResaLite(
       id: d.id,
       type: (m['Types'] as String?)?.trim() ?? '',
@@ -153,6 +231,7 @@ class ResaLite {
       dateDebut: ts(m['dateDebut']),
       dateSorti: ts(m['dateSorti']),
       dateCreated: ts(m['datecreated']),
+      houseId: hr is DocumentReference ? hr.id : null,
     );
   }
 }
