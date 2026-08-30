@@ -8,6 +8,7 @@ import '../features/not_partner_page.dart';
 import '../features/parc/fiche_bien_page.dart';
 import '../features/parc/nouvelle_annonce_page.dart';
 import '../features/parc/parc_page.dart';
+import '../features/reservations/reservations_page.dart';
 import '../features/revenus/revenus_page.dart';
 import '../features/placeholder_page.dart';
 import '../services/auth_service.dart';
@@ -66,11 +67,7 @@ GoRouter buildRouter(AuthService auth) {
           ),
           GoRoute(
             path: '/reservations',
-            builder: (_, __) => const PlaceholderPage(
-              title: 'Réservations',
-              subtitle: 'Demandes et séjours',
-              plannedFor: 'J3',
-            ),
+            builder: (_, __) => const ReservationsPage(),
           ),
           GoRoute(
             path: '/revenus',
