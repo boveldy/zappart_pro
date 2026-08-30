@@ -98,7 +98,7 @@ class _ParcPageState extends State<ParcPage> {
               if (all == null)
                 const AppCard(child: SkeletonBox(height: 260))
               else
-                _Table(rows: _filter(all)),
+                _Results(rows: _filter(all)),
             ],
           ),
         );
@@ -234,53 +234,36 @@ class _Dropdown extends StatelessWidget {
   }
 }
 
-class _Table extends StatelessWidget {
-  const _Table({required this.rows});
+class _Results extends StatelessWidget {
+  const _Results({required this.rows});
   final List<House> rows;
 
   @override
   Widget build(BuildContext context) {
     if (rows.isEmpty) {
       return const AppCard(
-        child: EmptyState('Aucun bien ne correspond.', icon: Icons.home_work_outlined),
+        child: EmptyState('Aucun bien ne correspond.',
+            icon: Icons.home_work_outlined),
       );
     }
-    return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Column(
+    return LayoutBuilder(builder: (context, c) {
+      const gap = 18.0;
+      const minCard = 264.0;
+      var cols = (c.maxWidth / (minCard + gap)).floor().clamp(1, 4);
+      final w = (c.maxWidth - gap * (cols - 1)) / cols;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-            child: Row(children: [
-              const SizedBox(width: 52),
-              _h('Bien', flex: 4),
-              _h('Type', flex: 2),
-              _h('Prix', flex: 2, right: true),
-              _h('Note', flex: 2),
-              _h('Statut', flex: 2),
-              const SizedBox(width: 24),
-            ]),
-          ),
-          for (final h in rows) _Row(h),
+          for (final h in rows) SizedBox(width: w, child: _BienCard(h)),
         ],
-      ),
-    );
-  }
-
-  static Widget _h(String t, {int flex = 1, bool right = false}) => Expanded(
-        flex: flex,
-        child: Text(t.toUpperCase(),
-            textAlign: right ? TextAlign.right : TextAlign.left,
-            style: GoogleFonts.mavenPro(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-                color: AppTheme.inkSoft)),
       );
+    });
+  }
 }
 
-class _Row extends StatelessWidget {
-  const _Row(this.h);
+class _BienCard extends StatelessWidget {
+  const _BienCard(this.h);
   final House h;
 
   static final _fmt = NumberFormat.decimalPattern('fr');
@@ -288,92 +271,151 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = h.badge;
-    return InkWell(
-      onTap: () => context.go('/parc/${h.id}'),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: 42,
-                height: 42,
-                child: h.images.isEmpty
-                    ? Container(
-                        color: AppTheme.panel,
-                        child: const Icon(Icons.home_outlined,
-                            size: 18, color: AppTheme.inkSoft))
-                    : CachedNetworkImage(
-                        imageUrl: h.images.first,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) =>
-                            Container(color: AppTheme.panel),
-                        errorWidget: (_, __, ___) => Container(
+    final lieu = [
+      h.locationType.isEmpty ? h.type : h.locationType,
+      if (h.zone.isNotEmpty) h.zone else h.quartier,
+    ].where((e) => e.isNotEmpty).join(' · ');
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () => context.go('/parc/${h.id}'),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.line),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  AspectRatio(
+                    aspectRatio: 3 / 2,
+                    child: h.images.isEmpty
+                        ? Container(
                             color: AppTheme.panel,
-                            child: const Icon(Icons.broken_image_outlined,
-                                size: 16, color: AppTheme.inkSoft)),
-                      ),
+                            child: const Icon(Icons.home_outlined,
+                                size: 30, color: AppTheme.inkSoft))
+                        : CachedNetworkImage(
+                            imageUrl: h.images.first,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) =>
+                                Container(color: AppTheme.panel),
+                            errorWidget: (_, __, ___) => Container(
+                                color: AppTheme.panel,
+                                child: const Icon(
+                                    Icons.broken_image_outlined,
+                                    color: AppTheme.inkSoft)),
+                          ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: StatusChip(b.label, tone: b.tone),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 4,
-              child: Text(h.titre,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.mavenPro(
-                      fontSize: 13, fontWeight: FontWeight.w600)),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                  h.locationType.isEmpty ? h.type : h.locationType,
-                  style: GoogleFonts.mavenPro(
-                      fontSize: 12.5, color: AppTheme.inkSoft)),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                h.prixAffiche == null
-                    ? '—'
-                    : _fmt.format(h.prixAffiche!.round()),
-                textAlign: TextAlign.right,
-                style: GoogleFonts.mavenPro(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: const [FontFeature.tabularFigures()]),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 10),
-                child: Text(
-                  (h.nbAvis ?? 0) == 0
-                      ? '—'
-                      : '★ ${h.noteMoyenne?.toStringAsFixed(1) ?? '–'} (${h.nbAvis})',
-                  style: GoogleFonts.mavenPro(
-                      fontSize: 12, color: AppTheme.inkSoft),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(h.titre,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(Icons.place_outlined,
+                            size: 13, color: AppTheme.inkSoft),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(lieu,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppTheme.inkSoft)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _spec(Icons.bed_outlined, '${h.nbChambre ?? 0}'),
+                        _spec(Icons.bathtub_outlined, '${h.nbBain ?? 0}'),
+                        if ((h.surface ?? 0) > 0)
+                          _spec(Icons.straighten, '${h.surface} m²'),
+                        if ((h.nbAvis ?? 0) > 0)
+                          _spec(Icons.star_border,
+                              h.noteMoyenne?.toStringAsFixed(1) ?? '–'),
+                      ],
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(height: 1),
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              style: const TextStyle(color: AppTheme.ink),
+                              children: [
+                                TextSpan(
+                                  text: h.prixAffiche == null
+                                      ? '—'
+                                      : _fmt.format(h.prixAffiche!.round()),
+                                  style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800),
+                                ),
+                                TextSpan(
+                                  text: '  ${h.uniteLabel}',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.inkSoft),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Text('Voir la fiche',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.terracotta)),
+                        const Icon(Icons.arrow_forward,
+                            size: 13, color: AppTheme.terracotta),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: StatusChip(b.label, tone: b.tone),
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppTheme.inkSoft),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _spec(IconData i, String t) => Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(i, size: 14, color: AppTheme.inkSoft),
+            const SizedBox(width: 3),
+            Text(t,
+                style: const TextStyle(
+                    fontSize: 11.5, color: AppTheme.inkSoft)),
+          ],
+        ),
+      );
 }
