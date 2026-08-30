@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/login_page.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/not_partner_page.dart';
+import '../features/parc/fiche_bien_page.dart';
+import '../features/parc/parc_page.dart';
 import '../features/placeholder_page.dart';
 import '../services/auth_service.dart';
 import '../shell/app_shell.dart';
@@ -42,11 +44,14 @@ GoRouter buildRouter(AuthService auth) {
           GoRoute(path: '/', builder: (_, __) => const DashboardPage()),
           GoRoute(
             path: '/parc',
-            builder: (_, __) => const PlaceholderPage(
-              title: 'Parc',
-              subtitle: 'Tous vos logements',
-              plannedFor: 'J2',
-            ),
+            builder: (_, __) => const ParcPage(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, s) =>
+                    FicheBienPage(id: s.pathParameters['id']!),
+              ),
+            ],
           ),
           GoRoute(
             path: '/calendrier',
