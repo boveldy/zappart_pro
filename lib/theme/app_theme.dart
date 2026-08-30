@@ -97,14 +97,16 @@ class AppTheme {
     );
   }
 
-  // Helpers de style réutilisés par les écrans
-  static TextStyle h1 = GoogleFonts.mavenPro(
-      fontSize: 24, fontWeight: FontWeight.w700, color: ink);
-  static TextStyle h2 = GoogleFonts.mavenPro(
-      fontSize: 18, fontWeight: FontWeight.w700, color: ink);
-  static TextStyle label = GoogleFonts.mavenPro(
-      fontSize: 13, fontWeight: FontWeight.w500, color: inkSoft);
-  static TextStyle body = GoogleFonts.mavenPro(fontSize: 14, color: ink);
+  // Helpers de style réutilisés par les écrans. `TextStyle` nu (pas de
+  // `fontFamily`) → hérite « Maven Pro » du `textTheme` via `MaterialApp`,
+  // sans rappeler `GoogleFonts` à l'initialisation statique.
+  static const TextStyle h1 =
+      TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: ink);
+  static const TextStyle h2 =
+      TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ink);
+  static const TextStyle label =
+      TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: inkSoft);
+  static const TextStyle body = TextStyle(fontSize: 14, color: ink);
 
   static BoxDecoration card = BoxDecoration(
     color: Colors.white,

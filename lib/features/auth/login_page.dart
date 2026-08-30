@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/brand.dart';
 
 /// Connexion agence — e-mail + mot de passe (les comptes sont créés par
 /// l'équipe Zappart pour l'instant ; pas d'auto-inscription). L'OTP SMS de
@@ -98,30 +99,30 @@ class _LoginPageState extends State<LoginPage> {
             constraints: const BoxConstraints(maxWidth: 380),
             child: Form(
               key: _formKey,
-              child: Column(
+              child: AutofillGroup(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      const ZappartWordmark(height: 26),
+                      const SizedBox(width: 10),
                       Container(
-                        width: 34,
-                        height: 34,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: AppTheme.ink,
-                          borderRadius: BorderRadius.circular(9),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        alignment: Alignment.center,
-                        child: Text('Z',
+                        child: Text('PRO',
                             style: GoogleFonts.mavenPro(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w800,
-                                fontSize: 18)),
+                                fontSize: 11,
+                                letterSpacing: 1)),
                       ),
-                      const SizedBox(width: 10),
-                      Text('Zappart Pro',
-                          style: GoogleFonts.mavenPro(
-                              fontSize: 20, fontWeight: FontWeight.w700)),
                     ],
                   ),
                   const SizedBox(height: 28),
@@ -184,6 +185,7 @@ class _LoginPageState extends State<LoginPage> {
                         : const Text('Se connecter'),
                   ),
                 ],
+              ),
               ),
             ),
           ),

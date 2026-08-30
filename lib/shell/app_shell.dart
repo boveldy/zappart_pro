@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/brand.dart';
 
 /// Entrée de navigation du shell.
 class NavItem {
@@ -99,25 +100,25 @@ class _Sidebar extends StatelessWidget {
                     ? MainAxisAlignment.center
                     : MainAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: AppTheme.ink,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text('Z',
-                        style: GoogleFonts.mavenPro(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16)),
-                  ),
+                  const ZappartMark(size: 30, radius: 8),
                   if (!compact) ...[
                     const SizedBox(width: 10),
-                    Text('Zappart Pro',
-                        style: GoogleFonts.mavenPro(
-                            fontWeight: FontWeight.w700, fontSize: 16)),
+                    const ZappartWordmark(height: 20),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.ink,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text('PRO',
+                          style: GoogleFonts.mavenPro(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 9,
+                              letterSpacing: 0.8)),
+                    ),
                   ],
                 ],
               ),
