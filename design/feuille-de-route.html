@@ -1,0 +1,370 @@
+<title>Feuille de route Zappart Pro</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+
+<style>
+  :root{
+    --bg:#f4f4f4; --surface:#ffffff; --ink:#161616; --ink2:#3a3a3a;
+    --muted:#6f6f6f; --line:#e4e4e4; --panel:#f6f6f6;
+    --ok:#2f6b45; --wait:#7a5c1f; --danger:#8a4033;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f0f0f; --surface:#161616; --ink:#ececec; --ink2:#c2c2c2;
+      --muted:#8f8f8f; --line:#2a2a2a; --panel:#1c1c1c;
+      --ok:#7fbf97; --wait:#d8b878; --danger:#dda79c;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f0f0f; --surface:#161616; --ink:#ececec; --ink2:#c2c2c2;
+    --muted:#8f8f8f; --line:#2a2a2a; --panel:#1c1c1c;
+    --ok:#7fbf97; --wait:#d8b878; --danger:#dda79c;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Maven Pro",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:56px 24px 100px}
+
+  header.lede{margin-bottom:40px}
+  .kicker{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+  h1{font-size:clamp(26px,4vw,36px);font-weight:800;letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+  .lede p{font-size:15px;color:var(--muted);margin:0;max-width:62ch}
+
+  .box{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:20px 22px;margin:22px 0;
+  }
+  .box h3{margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .box ul{margin:0;padding-left:18px}
+  .box li{font-size:13.5px;margin:5px 0;color:var(--ink2)}
+  .box li b{color:var(--ink);font-weight:600}
+
+  h2{
+    font-size:20px;font-weight:800;letter-spacing:-.01em;margin:44px 0 4px;
+    padding-top:22px;border-top:2px solid var(--ink);
+  }
+  h2 .n{font-variant-numeric:tabular-nums;color:var(--muted);margin-right:8px}
+  .h2sub{font-size:13px;color:var(--muted);margin:0 0 16px}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+  th{
+    text-align:left;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--muted);padding:11px 14px;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.feat{font-weight:600;color:var(--ink);white-space:nowrap}
+  td.desc{color:var(--ink2)}
+  td.dep{color:var(--muted);font-size:12px;white-space:nowrap}
+
+  .st{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .st.done{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+  .st.next{background:var(--ink);color:var(--surface)}
+  .st.plan{background:var(--panel);color:var(--muted);border:1px solid var(--line)}
+  .st.dec{background:color-mix(in srgb,var(--wait) 20%,transparent);color:var(--wait)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:14px 0 0;font-size:12px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:6px}
+
+  .foot{margin-top:44px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}
+  a{color:var(--ink)}
+  :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+</style>
+
+<div class="wrap">
+  <header class="lede">
+    <p class="kicker">Zappart Pro · référence produit</p>
+    <h1>Feuille de route par couche</h1>
+    <p>Toutes les fonctionnalités discutées, rangées par couche pour ne rien
+      oublier. Zappart Pro = logiciel de gestion immobilière (web), avec la
+      marketplace Zappart comme canal de diffusion.</p>
+    <div class="legend">
+      <span><span class="st done">Fait</span> livré et déployé</span>
+      <span><span class="st next">Suivant</span> prochaine construction</span>
+      <span><span class="st plan">Planifié</span> couche définie, pas commencé</span>
+      <span><span class="st dec">À décider</span> dépend d'un choix</span>
+    </div>
+  </header>
+
+  <div class="box">
+    <h3>Principes verrouillés</h3>
+    <ul>
+      <li><b>Support</b> — Zappart Pro est un outil de <b>bureau</b>. Sous 720 px, page « ouvrez sur ordinateur ». Le mobile reste l'espace partenaire de l'app (companion), non modifié pour l'instant.</li>
+      <li><b>Marketplace</b> — publication <b>sur Zappart uniquement</b>, activable bien par bien. Aucune publication vers Airbnb / Booking. Seule ouverture externe : import iCal <b>en lecture</b> pour bloquer les dates déjà réservées ailleurs.</li>
+      <li><b>Services / prestataires</b> — restent sur mobile. Hors périmètre de Zappart Pro. Un compte prestataire pur voit un simple encart.</li>
+      <li><b>Vente / achat</b> — <b>hors périmètre</b>. Zappart = location (mensuel + journalier). La vente est un autre métier → phase 3 si décision produit.</li>
+      <li><b>Terrain</b> — bons de visite signés, capture hors-ligne, signalement de panne par le locataire → <b>mobile</b>, pas le web.</li>
+      <li><b>Backend</b> — 100 % Firebase pour la couche 1. Point de décision « ajouter un Postgres à côté » à la couche 2 (données relationnelles : baux, loyers, CRM, reporting).</li>
+      <li><b>Rôles</b> — 2 seulement au lancement : <b>gérant</b> (tout) / <b>agent</b> (ses biens affectés). Pas de matrice de permissions.</li>
+      <li><b>Cible</b> — agences mensuel <b>et</b> hôtes journalier, à parité.</li>
+      <li><b>Hébergement</b> — GitHub Pages (build en CI). Plus tard : Firebase Hosting sur <code>pro.zappart.xx</code>.</li>
+    </ul>
+  </div>
+
+  <!-- ================= COUCHE 1 ================= -->
+  <h2><span class="n">Couche 1</span>Lancement — le noyau utilisable</h2>
+  <p class="h2sub">Tout sur Firebase. Aucune table relationnelle nouvelle. Rôle hôte / agence.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Écran</th><th>Ce qu'il fait</th><th>Statut</th><th>Backend</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="feat">Connexion</td>
+          <td class="desc">Google / Apple / e-mail. Accès conditionné à une fiche partenaire liée.</td>
+          <td><span class="st done">Fait</span></td>
+          <td class="dep">— (Apple : config à faire)</td>
+        </tr>
+        <tr>
+          <td class="feat">Coquille</td>
+          <td class="desc">Barre latérale + barre haute + gate mobile &lt; 720 px.</td>
+          <td><span class="st done">Fait</span></td>
+          <td class="dep">—</td>
+        </tr>
+        <tr>
+          <td class="feat">Tableau de bord</td>
+          <td class="desc">À traiter (demandes, visites, annonces rejetées) · Argent (solde à retirer, en attente, revenu 30 j) · Occupation (taux journalier, mensuel loués) · Arrivées &amp; départs 7 j · Dernières réservations.</td>
+          <td><span class="st done">Fait</span> <span style="color:var(--muted);font-size:11px">v1</span></td>
+          <td class="dep">—</td>
+        </tr>
+        <tr>
+          <td class="feat">Parc</td>
+          <td class="desc">Liste filtrable (recherche, statut, type, quartier) → fiche bien : galerie, infos, motif de rejet, commodités. Interrupteur <b>Publié sur Zappart</b> 1-clic. Archiver.</td>
+          <td><span class="st done">Fait</span></td>
+          <td class="dep">— (règles déjà OK)</td>
+        </tr>
+        <tr>
+          <td class="feat">Créer une annonce (web)</td>
+          <td class="desc">Le wizard adapté desktop (création + modification). Pour l'instant : redirige vers l'app.</td>
+          <td><span class="st plan">Planifié</span></td>
+          <td class="dep">réutilise le wizard</td>
+        </tr>
+        <tr>
+          <td class="feat">Réservations</td>
+          <td class="desc">Liste + filtres (type, statut, période) → détail + <b>Accepter / Refuser</b> une demande + lien WhatsApp client. Pastille « à traiter ».</td>
+          <td><span class="st next">Suivant</span></td>
+          <td class="dep">Cloud Function existante</td>
+        </tr>
+        <tr>
+          <td class="feat">Calendrier</td>
+          <td class="desc">Grille mensuelle, 1 ligne par bien : libre / réservé / bloqué. Clic → détail. <b>Import iCal</b> (Airbnb/Booking) pour bloquer les dates.</td>
+          <td><span class="st plan">Planifié</span></td>
+          <td class="dep">sync iCal déjà déployé</td>
+        </tr>
+        <tr>
+          <td class="feat">Revenus</td>
+          <td class="desc">Solde disponible + <b>Retirer</b> · en attente · historique fusionné (encaissements + retraits) · relevé de période (encaissé / commission / net) · export CSV.</td>
+          <td><span class="st plan">Planifié</span></td>
+          <td class="dep">Cloud Function existante</td>
+        </tr>
+        <tr>
+          <td class="feat">Équipe</td>
+          <td class="desc">Liste des agents · inviter un agent · 2 rôles (gérant / agent) · affecter des biens · un agent ne voit que ses biens.</td>
+          <td><span class="st plan">Planifié</span></td>
+          <td class="dep"><code>users.agent_de</code>, <code>agent_role</code>, <code>biens_assignes</code> + règles</td>
+        </tr>
+        <tr>
+          <td class="feat">Demandes (leads)</td>
+          <td class="desc">Boîte des messages d'intérêt envoyés depuis l'app Zappart sur mes biens : quel bien, qui, message, coordonnées.</td>
+          <td><span class="st dec">À décider</span></td>
+          <td class="dep">audit du flux <code>chats</code>/<code>message</code></td>
+        </tr>
+        <tr>
+          <td class="feat">Paramètres</td>
+          <td class="desc">Fiche agence (nom, logo, contact, adresse) · coordonnées de versement (Wave / RIB) · plan (marketplace / pro).</td>
+          <td><span class="st plan">Planifié</span></td>
+          <td class="dep"><code>partenaire.plan</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <h3>Backend couche 1 — le minimum</h3>
+    <ul>
+      <li><b>Publier / dépublier</b> = bascule du champ <code>active</code> (aucun champ nouveau — les règles Firestore l'autorisent déjà en self-service).</li>
+      <li><b>Statut Libre / Loué</b> du bien → reporté couche 2 (dérivé du bail). Couche 1 = En ligne / Hors ligne via <code>active</code>.</li>
+      <li><b>Équipe</b> : <code>users.agent_de</code> + <code>agent_role</code> + <code>biens_assignes</code> + règles de scoping agent.</li>
+      <li><b>Calendrier</b> : exposer <code>house.ical_urls</code> (le cron de sync existe déjà).</li>
+      <li><b>Leads</b> : auditer comment la messagerie route les demandes avant de trancher l'écran.</li>
+    </ul>
+  </div>
+
+  <!-- ================= COUCHE 2 ================= -->
+  <h2><span class="n">Couche 2</span>Avec les agences pilotes — le différenciateur</h2>
+  <p class="h2sub">Le cœur de la valeur « gestion locative ». Base du plan payant. On le construit <b>avec</b> 2-3 agences pilotes.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Fonctionnalité</th><th>Ce qu'elle fait</th><th>Backend</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="feat">Baux &amp; locataires</td>
+          <td class="desc">Fiche bail par bien : locataire (nom, CNI, téléphone), date d'entrée, loyer, charges, caution, durée. Pièces jointes (bail signé, pièce d'identité). Origine : issu d'une prise de logement Zappart, ou saisi à la main.</td>
+          <td class="dep">collection <code>baux</code> + règles</td>
+        </tr>
+        <tr>
+          <td class="feat">Suivi des loyers &amp; quittances</td>
+          <td class="desc">Vue mensuelle : payé / partiel / en retard par locataire. Enregistrer un paiement en 2 clics. <b>Quittance PDF générée automatiquement</b> + envoi WhatsApp / e-mail 1-clic.</td>
+          <td class="dep">collection <code>echeances</code> · cron mensuel (génération) · cron quotidien (statut) · génération PDF</td>
+        </tr>
+        <tr>
+          <td class="feat">Alertes de retard</td>
+          <td class="desc">Liste des retards (bien, locataire, montant, jours) + bouton <b>Relancer</b> → message pré-rédigé WhatsApp. Option : 1<sup>re</sup> relance automatique.</td>
+          <td class="dep">serveur WhatsApp existant · réglages (délai de grâce)</td>
+        </tr>
+        <tr>
+          <td class="feat">Relevés &amp; comptes-rendus propriétaires</td>
+          <td class="desc">Rapport mensuel par propriétaire : encaissé − commission = net à reverser. + activité (nb visites, retours clients).</td>
+          <td class="dep">collection <code>proprietaires</code></td>
+        </tr>
+        <tr>
+          <td class="feat">Mini-CRM contacts</td>
+          <td class="desc">Base clients (candidats locataires, locataires, propriétaires) : coordonnées + historique d'appels / notes.</td>
+          <td class="dep">collection <code>contacts</code></td>
+        </tr>
+        <tr>
+          <td class="feat">Agenda des visites</td>
+          <td class="desc">Calendrier des RDV : visites <b>Zappart</b> + visites saisies à la main. Rappel automatique SMS / WhatsApp au client la veille.</td>
+          <td class="dep">collection <code>visites</code> · serveur WhatsApp</td>
+        </tr>
+        <tr>
+          <td class="feat">Générateur d'affiches &amp; visuels</td>
+          <td class="desc">Depuis la fiche bien : affiche PDF prête à imprimer (vitrine) ou visuel carré Instagram / Facebook, avec photos, prix, logo, QR code vers l'annonce.</td>
+          <td class="dep">génération image/PDF (autonome)</td>
+        </tr>
+        <tr>
+          <td class="feat">Diffusion multi-canaux</td>
+          <td class="desc">Bouton « Partager » → lien propre + aperçu vers WhatsApp / Facebook / LinkedIn.</td>
+          <td class="dep">page publique du bien (Zappart)</td>
+        </tr>
+        <tr>
+          <td class="feat">Statistiques d'audience Zappart</td>
+          <td class="desc">Par bien : nombre de vues, favoris, partages (semaine / mois). Sert aussi le compte-rendu propriétaire.</td>
+          <td class="dep">compteur de vues (<code>ajouter_compteur_maison</code> ?) · agrégation favoris</td>
+        </tr>
+        <tr>
+          <td class="feat">Coffre-fort documentaire</td>
+          <td class="desc">Stockage sécurisé par bien / bail : titre de propriété, pièces d'identité, diagnostics, assurance, contrats signés.</td>
+          <td class="dep">Firebase Storage + règles</td>
+        </tr>
+        <tr>
+          <td class="feat">Saisie manuelle de réservations</td>
+          <td class="desc">Enregistrer un séjour / une réservation qui n'est pas venu de Zappart (résa directe, autre plateforme).</td>
+          <td class="dep">extension du modèle réservation</td>
+        </tr>
+        <tr>
+          <td class="feat">Statut Libre / Loué (auto)</td>
+          <td class="desc">Le bien passe « Loué » automatiquement quand un bail est actif → se retire de la marketplace tout seul. Bail fini → repasse « Libre ».</td>
+          <td class="dep">dérivé de <code>baux</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="box">
+    <h3>Point de décision — base de données</h3>
+    <ul>
+      <li>La couche 2 est du <b>relationnel</b> (baux → échéances → paiements, agents → biens, contacts → leads → visites). Firestore le fait au prix de dénormalisation + triggers.</li>
+      <li>À évaluer alors : <b>ajouter un Postgres</b> (Supabase / Cloud SQL) <b>à côté</b> de Firebase — Firebase garde la marketplace / mobile / auth, Postgres porte la gestion.</li>
+      <li>On conçoit les collections couche 2 <b>propres</b> (clés étrangères claires, pas d'imbrication) pour garder la bascule possible. Jamais de migration complète.</li>
+    </ul>
+  </div>
+
+  <!-- ================= PHASE 3 ================= -->
+  <h2><span class="n">Phase 3+</span>Évolution — décisions produit</h2>
+  <p class="h2sub">Après le lancement et la couche 2. Chacun demande une décision explicite.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Fonctionnalité</th><th>Ce qu'elle fait</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="feat">Vente / achat</td>
+          <td class="desc">Nouveau vertical : vendeurs, acheteurs, promesses de vente, mandats de vente, commission de transaction (pas de loyer récurrent).</td>
+          <td class="dep">grosse décision produit</td>
+        </tr>
+        <tr>
+          <td class="feat">Signature électronique</td>
+          <td class="desc">Signer bail / mandat de gestion à distance : lien envoyé, signature sur téléphone, PDF signé pour tous.</td>
+          <td class="dep">prestataire e-sign ou maison</td>
+        </tr>
+        <tr>
+          <td class="feat">Module maintenance &amp; incident</td>
+          <td class="desc">Le locataire signale une panne avec photo ; l'agence assigne (plombier — les prestataires Zappart se branchent ici) et suit jusqu'à résolu.</td>
+          <td class="dep">mobile (accès locataire)</td>
+        </tr>
+        <tr>
+          <td class="feat">Calcul des commissions agents</td>
+          <td class="desc">Répartition automatique de la commission entre agents à la conclusion d'un deal, selon les règles de l'agence.</td>
+          <td class="dep">dépend d'agents + suivi des deals</td>
+        </tr>
+        <tr>
+          <td class="feat">Matching automatique</td>
+          <td class="desc">Croise les critères des chercheurs (budget, quartier) avec les biens en portefeuille → « 3 clients cherchent ça ».</td>
+          <td class="dep">aligné avec le moteur de reco (différé)</td>
+        </tr>
+        <tr>
+          <td class="feat">Bons de visite électroniques</td>
+          <td class="desc">Le client signe une preuve de visite sur le téléphone de l'agent → protège la commission de l'agence.</td>
+          <td class="dep">mobile</td>
+        </tr>
+        <tr>
+          <td class="feat">App mobile native + hors-ligne</td>
+          <td class="desc">L'agent saisit un bien et prend des photos sans réseau, synchro au retour.</td>
+          <td class="dep">c'est le rôle de l'app, pas de Pro</td>
+        </tr>
+        <tr>
+          <td class="feat">Multi-diffusion Airbnb / Booking</td>
+          <td class="desc">Publier vraiment sur les plateformes externes via un channel manager (Channex…).</td>
+          <td class="dep">plan payant, si demande réelle</td>
+        </tr>
+        <tr>
+          <td class="feat">Droits granulaires par agent</td>
+          <td class="desc">Au-delà des 2 rôles : qui peut faire quoi champ par champ.</td>
+          <td class="dep">quand les 2 rôles ne suffisent plus</td>
+        </tr>
+        <tr>
+          <td class="feat">Espace démarcheur autonome</td>
+          <td class="desc">Un indépendant qui gère ses propres affaires, hors agence.</td>
+          <td class="dep">nouveau persona</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ================= QUESTIONS ================= -->
+  <div class="box">
+    <h3>Questions ouvertes</h3>
+    <ul>
+      <li><b>Vente</b> — on la fait, oui ou non, et à quel moment ?</li>
+      <li><b>Plan payant</b> — prix, et à partir de quand ? (le champ <code>partenaire.plan</code> est prévu, rien n'est facturé aujourd'hui.)</li>
+      <li><b>Leads</b> — l'écran « Demandes » dépend de l'audit de la messagerie ; si c'est du gros backend, il bascule en couche 2.</li>
+      <li><b>Base de données</b> — Postgres en hybride à la couche 2 ?</li>
+      <li><b>Apple sign-in</b> — config Service ID à faire côté portail Apple + Firebase.</li>
+    </ul>
+  </div>
+
+  <!-- ================= AVANCEMENT ================= -->
+  <div class="box">
+    <h3>État d'avancement</h3>
+    <ul>
+      <li><b>Fait</b> — projet <code>zappart_pro</code> (Flutter Web) · CI GitHub Pages · connexion (Google/Apple/e-mail) · coquille + gate mobile · tableau de bord v1 · <b>écran Parc</b> (liste + fiche + toggle marketplace + archiver).</li>
+      <li><b>Suivant</b> — écran Réservations.</li>
+      <li><b>Ordre couche 1</b> — Parc ✓ → Réservations → Calendrier → Revenus → Paramètres → Équipe → Demandes.</li>
+    </ul>
+  </div>
+
+  <p class="foot">
+    Document de référence — mis à jour au fil des sessions.
+    Site : <a href="https://boveldy.github.io/zappart_pro/">boveldy.github.io/zappart_pro</a> ·
+    code : <a href="https://github.com/boveldy/zappart_pro">github.com/boveldy/zappart_pro</a>
+  </p>
+</div>
