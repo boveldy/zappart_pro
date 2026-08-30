@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/login_page.dart';
+import '../features/dashboard/dashboard_page.dart';
 import '../features/not_partner_page.dart';
 import '../features/placeholder_page.dart';
 import '../services/auth_service.dart';
@@ -38,14 +39,7 @@ GoRouter buildRouter(AuthService auth) {
       ShellRoute(
         builder: (_, __, child) => AppShell(child: child),
         routes: [
-          GoRoute(
-            path: '/',
-            builder: (_, __) => const PlaceholderPage(
-              title: 'Tableau de bord',
-              subtitle: 'Vue d\'ensemble de votre activité',
-              plannedFor: 'J2',
-            ),
-          ),
+          GoRoute(path: '/', builder: (_, __) => const DashboardPage()),
           GoRoute(
             path: '/parc',
             builder: (_, __) => const PlaceholderPage(

@@ -2,569 +2,651 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
 
 <style>
-  /* ---------- page frame tokens (theme-aware) ---------- */
-  :root{
-    --bg:#f3f4f5;
-    --surface:#ffffff;
-    --ink:#17191b;
-    --muted:#6a6f75;
-    --line:#e3e5e7;
-    --accent:#c4836a;
-    --radius:14px;
-  }
+  /* ===== page frame (theme-aware) ===== */
+  :root{ --bg:#ededed; --surface:#fff; --ink:#141414; --muted:#8a8a8a; --line:#e4e4e4; --radius:14px; }
   @media (prefers-color-scheme:dark){
-    :root:not([data-theme="light"]){
-      --bg:#101214; --surface:#17191b; --ink:#e9eaec; --muted:#9aa0a6; --line:#292c2f;
-    }
+    :root:not([data-theme="light"]){ --bg:#0e0e0e; --surface:#161616; --ink:#ededed; --muted:#8f8f8f; --line:#2a2a2a; }
   }
-  :root[data-theme="dark"]{
-    --bg:#101214; --surface:#17191b; --ink:#e9eaec; --muted:#9aa0a6; --line:#292c2f;
-  }
+  :root[data-theme="dark"]{ --bg:#0e0e0e; --surface:#161616; --ink:#ededed; --muted:#8f8f8f; --line:#2a2a2a; }
 
   *{box-sizing:border-box}
-  html{-webkit-text-size-adjust:100%}
   body{
-    margin:0;
-    background:var(--bg);
-    color:var(--ink);
+    margin:0;background:var(--bg);color:var(--ink);
     font-family:"Maven Pro",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    line-height:1.55;
-    -webkit-font-smoothing:antialiased;
+    line-height:1.55;-webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:1260px;margin:0 auto;padding:56px 28px 96px}
-
-  .lede{max-width:60ch}
-  .kicker{
-    font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--accent);margin:0 0 14px;
-  }
-  h1{
-    font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.02em;
-    text-wrap:balance;margin:0 0 14px;
-  }
+  .wrap{max-width:1280px;margin:0 auto;padding:56px 28px 100px}
+  .lede{max-width:62ch}
+  .kicker{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+  h1{font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.02em;text-wrap:balance;margin:0 0 14px}
   .lede p{color:var(--muted);font-size:16px;margin:0 0 8px}
+  .note{margin-top:18px;font-size:13px;color:var(--muted);border-left:2px solid var(--ink);padding-left:12px;max-width:60ch}
+  .note b{color:var(--ink)}
 
-  .legend{
-    display:flex;flex-wrap:wrap;gap:10px 22px;margin:26px 0 0;
-    font-size:13px;color:var(--muted);
-  }
-  .legend b{color:var(--ink);font-weight:600}
-
-  section.piste{margin-top:64px}
-  .phead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
-  .plabel{
-    font-family:"IBM Plex Mono",ui-monospace,monospace;
-    font-size:12px;font-weight:600;letter-spacing:.08em;
-    color:var(--muted);border:1px solid var(--line);border-radius:6px;
-    padding:3px 8px;
-  }
-  .phead h2{font-size:22px;font-weight:700;letter-spacing:-.01em;margin:0}
-  .pdesc{color:var(--muted);font-size:14.5px;max-width:64ch;margin:6px 0 22px}
+  section.piste{margin-top:60px}
+  .phead{display:flex;align-items:baseline;gap:13px;flex-wrap:wrap;margin-bottom:4px}
+  .plabel{font-size:11px;font-weight:700;letter-spacing:.09em;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+  .phead h2{font-size:22px;font-weight:800;letter-spacing:-.01em;margin:0}
+  .pdesc{color:var(--muted);font-size:14.5px;max-width:68ch;margin:6px 0 20px}
   .pdesc .pick{color:var(--ink);font-weight:600}
 
-  /* horizontal scroll container so the wide artboard never breaks the page */
   .stage{
-    overflow-x:auto;
-    border-radius:calc(var(--radius) + 4px);
-    border:1px solid var(--line);
-    background:
-      repeating-linear-gradient(45deg,transparent 0 11px,color-mix(in srgb,var(--muted) 7%,transparent) 11px 12px);
-    padding:26px;
+    overflow-x:auto;border-radius:20px;border:1px solid var(--line);
+    background:repeating-linear-gradient(45deg,transparent 0 11px,color-mix(in srgb,var(--muted) 8%,transparent) 11px 12px);
+    padding:24px;
   }
-  .artboard{width:1160px;border-radius:16px;overflow:hidden;box-shadow:0 20px 50px -24px rgba(0,0,0,.4)}
+  .artboard{width:1160px;border-radius:16px;overflow:hidden;box-shadow:0 24px 60px -30px rgba(0,0,0,.5)}
 
-  /* ============================================================= */
-  /*  SHARED ARTBOARD SKELETON (scoped per piste via .pa .pb .pc)  */
-  /* ============================================================= */
-  .db{display:grid;grid-template-columns:212px 1fr;min-height:660px;font-size:14px}
-  .db .side{display:flex;flex-direction:column;padding:20px 16px;gap:4px}
-  .db .brand{display:flex;align-items:center;gap:8px;padding:6px 8px 20px;font-weight:800;letter-spacing:-.01em;font-size:17px}
-  .db .brand .dot{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:12px;color:#fff}
-  .db nav a{
-    display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;
-    font-size:13.5px;font-weight:500;text-decoration:none;
-  }
-  .db nav a .ic{width:15px;height:15px;flex:0 0 15px;opacity:.8}
-  .db nav .sp{flex:1}
-  .db .main{display:flex;flex-direction:column}
-  .db .top{display:flex;align-items:center;justify-content:space-between;padding:20px 30px;gap:16px}
-  .db .top h3{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
-  .db .top .sub{font-size:12.5px;font-weight:500}
-  .db .who{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
-  .db .who .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
-  .db .body{padding:6px 30px 30px;display:flex;flex-direction:column;gap:20px}
+  /* ===================================================================
+     ONE monochrome design system — the 4 pistes share every colour and
+     the font; they differ only in LAYOUT / composition.
+     ink #141414 · greys · white · muted status tints only
+     =================================================================== */
+  .db{--pink:#141414;--p2:#333;--p3:#5c5c5c;--p4:#8f8f8f;--pl:#d7d7d7;
+      --cbg:#f4f4f4;--card:#fff;--cl:#e7e7e7;--rl:#efefef;--mut:#8a8a8a;
+      --ok-b:#e9efe9;--ok-f:#2f6b45;--wa-b:#f2ede1;--wa-f:#7a5c1f;--nw-b:#ececec;--nw-f:#5a5a5a;
+      display:grid;grid-template-columns:216px 1fr;min-height:720px;font-size:14px;background:var(--cbg);color:#141414}
 
+  .db .side{background:#141414;color:#a2a2a2;display:flex;flex-direction:column;padding:20px 15px;gap:3px}
+  .db .brand{display:flex;align-items:center;gap:9px;padding:6px 9px 18px;font-weight:800;font-size:17px;letter-spacing:-.01em;color:#fff}
+  .db .navlab{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#5f5f5f;padding:12px 10px 6px}
+  .db nav a{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:9px;font-size:13.5px;font-weight:500;text-decoration:none;color:#a2a2a2}
+  .db nav a .ic{width:16px;text-align:center;opacity:.8}
+  .db nav a.on{background:#ffffff14;color:#fff;font-weight:700;box-shadow:inset 2px 0 0 #fff}
+  .db .acct{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 9px 2px;font-size:12px;color:#cfcfcf}
+  .db .acct .av{width:30px;height:30px;border-radius:50%;flex:0 0 30px;display:grid;place-items:center;font-weight:700;font-size:12px;background:#fff;color:#141414}
+  .db .acct b{display:block;font-weight:700}
+  .db .acct span{opacity:.55;font-size:11px}
+
+  .db .main{display:flex;flex-direction:column;min-width:0}
+  .db .top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 30px 4px}
+  .db .top h3{margin:0;font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .db .top .sub{font-size:12.5px;font-weight:500;color:var(--mut)}
+  .db .search{flex:1;max-width:280px;height:38px;border-radius:999px;display:flex;align-items:center;padding:0 15px;font-size:12.5px;background:#fff;border:1px solid var(--cl);color:var(--mut)}
+  .db .btn{height:38px;padding:0 16px;border-radius:10px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;background:#141414;color:#fff}
+  .db .who{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700}
+  .db .who .av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:#141414;color:#fff}
+
+  .db .body{padding:14px 30px 30px;display:flex;flex-direction:column;gap:16px}
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .kpi{padding:16px 16px 15px;display:flex;flex-direction:column;gap:7px}
-  .kpi .lab{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-  .kpi .val{font-size:25px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-  .kpi .val small{font-size:13px;font-weight:600;letter-spacing:0}
-  .kpi .delta{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+  .kpi{background:#fff;border:1px solid var(--cl);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+  .kpi .lab{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+  .kpi .val{font-size:24px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .kpi .val small{font-size:12px;font-weight:600}
+  .kpi .delta{font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--mut)}
+  .kpi .delta.up{color:var(--ok-f)} .kpi .delta.dn{color:var(--wa-f)}
+  .kpi.dark{background:#141414;color:#fff;border-color:#141414}
+  .kpi.dark .lab,.kpi.dark .delta{color:#b9b9b9}
+  .kpi.d2{background:#262626}.kpi.d3{background:#3a3a3a}.kpi.d4{background:#4f4f4f}
 
-  .grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:20px}
-  .card{padding:18px 18px 16px;display:flex;flex-direction:column;gap:14px}
-  .card > .ch{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .spark{display:flex;align-items:flex-end;gap:2px;height:26px;margin-top:2px}
+  .spark i{flex:1;background:var(--pl);border-radius:1px}
+  .spark i.a{background:#141414}
+
+  .row2{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:16px}
+  .card{background:#fff;border:1px solid var(--cl);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+  .card>.ch{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
   .card .ch h4{margin:0;font-size:14.5px;font-weight:700}
-  .card .ch .meta{font-size:12px;font-weight:500}
+  .card .ch .meta{font-size:11.5px;font-weight:500;color:var(--mut)}
+  .card.dark{background:#141414;color:#fff;border-color:#141414}
+  .card.dark .ch h4{color:#fff}.card.dark .ch .meta{color:#b0b0b0}
 
-  .chartwrap{position:relative}
   .chartwrap svg{display:block;width:100%;height:auto;overflow:visible}
-  .xr{display:flex;justify-content:space-between;font-size:10.5px;margin-top:6px;font-variant-numeric:tabular-nums}
+  .xr{display:flex;justify-content:space-between;font-size:10px;margin-top:6px;color:var(--mut);font-variant-numeric:tabular-nums}
+
+  .donut{display:flex;align-items:center;gap:18px}
+  .donut .ring{width:116px;height:116px;border-radius:50%;flex:0 0 116px;display:grid;place-items:center;position:relative;
+    background:conic-gradient(#141414 0 48%,#5c5c5c 0 70%,#9a9a9a 0 88%,#d7d7d7 0 100%)}
+  .donut .ring::after{content:"";position:absolute;inset:19px;border-radius:50%;background:#fff}
+  .donut .ring .rc{position:relative;z-index:1;text-align:center;font-weight:800;font-size:15px;line-height:1.1}
+  .donut .ring .rc span{display:block;font-size:9.5px;font-weight:600;color:var(--mut)}
+  .donut .lg{display:flex;flex-direction:column;gap:8px;font-size:12px;flex:1}
+  .donut .lg .li{display:flex;align-items:center;gap:8px}
+  .donut .lg .li i{width:9px;height:9px;border-radius:3px;flex:0 0 9px}
+  .donut .lg .li b{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700}
 
   .arr{display:flex;flex-direction:column;gap:2px}
-  .arr .row{display:flex;align-items:center;gap:12px;padding:10px 4px}
-  .arr .row + .row{border-top:1px solid var(--rl,rgba(0,0,0,.06))}
-  .arr .day{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;width:52px;flex:0 0 52px;text-align:center;line-height:1.2}
-  .arr .info{flex:1;min-width:0}
-  .arr .info b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .arr .info span{font-size:11.5px}
-  .arr .pill{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
+  .arr .r{display:flex;align-items:center;gap:11px;padding:9px 3px}
+  .arr .r+.r{border-top:1px solid var(--rl)}
+  .arr .d{font-size:10px;font-weight:700;width:48px;flex:0 0 48px;text-align:center;line-height:1.25;color:var(--mut)}
+  .arr .i{flex:1;min-width:0}
+  .arr .i b{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .arr .i span{font-size:11px;color:var(--mut)}
+  .arr .p{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;background:#efefef;color:#3a3a3a}
+
+  .bars{display:flex;align-items:flex-end;gap:10px;height:120px;padding-top:6px}
+  .bars .bar{flex:1;border-radius:4px 4px 2px 2px;position:relative;background:#e0e0e0}
+  .bars .bar.hi{background:#141414}
+  .bars .bar span{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:9.5px;color:var(--mut)}
+
+  .rings3{display:flex;gap:12px;justify-content:space-around}
+  .rings3 .rg{text-align:center;font-size:11px;font-weight:600;color:var(--mut)}
+  .rings3 .rg .rr{width:62px;height:62px;border-radius:50%;margin:0 auto 5px;display:grid;place-items:center;position:relative;font-weight:800;font-size:12px;color:#141414}
+  .rings3 .rg .rr::after{content:"";position:absolute;inset:8px;border-radius:50%;background:#fff}
+  .rings3 .rg .rr b{position:relative;z-index:1}
+  .rings3 .rg:nth-child(1) .rr{background:conic-gradient(#141414 0 66%,#e7e7e7 0)}
+  .rings3 .rg:nth-child(2) .rr{background:conic-gradient(#141414 0 31%,#e7e7e7 0)}
+  .rings3 .rg:nth-child(3) .rr{background:conic-gradient(#141414 0 22%,#e7e7e7 0)}
 
   table.res{width:100%;border-collapse:collapse;font-size:12.5px}
-  table.res th{
-    text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-    padding:0 10px 9px;
-  }
-  table.res td{padding:10px;border-top:1px solid var(--rl,rgba(0,0,0,.06));vertical-align:middle}
-  table.res td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  table.res th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:0 10px 9px;color:var(--mut)}
+  table.res td{padding:10px;border-top:1px solid var(--rl)}
+  table.res td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
   table.res .b{font-weight:600}
-  .tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
+  .tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block}
+  .tag.ok{background:var(--ok-b);color:var(--ok-f)}
+  .tag.wait{background:var(--wa-b);color:var(--wa-f)}
+  .tag.new{background:var(--nw-b);color:var(--nw-f)}
 
-  /* ---------------- PISTE A · Registre --------------------------- */
-  /* cool near-white, ink graphite, terracotta only as a hairline state,
-     mono figures, sharp corners, dense ledger tables                */
-  .pa .db{background:#fbfbfc;color:#1b1e21}
-  .pa .side{background:#fbfbfc;border-right:1px solid #e7e8ea}
-  .pa .brand{color:#1b1e21}
-  .pa .brand .dot{background:#1b1e21;border-radius:4px}
-  .pa nav a{color:#5b6167;border-radius:4px}
-  .pa nav a.on{background:#f0eceb;color:#1b1e21;font-weight:600;box-shadow:inset 2px 0 0 #c4836a}
-  .pa .top{border-bottom:1px solid #e7e8ea}
-  .pa .top .sub{color:#8a9096}
-  .pa .who .av{background:#1b1e21}
-  .pa .kpi{background:#fff;border:1px solid #e7e8ea;border-radius:4px}
-  .pa .kpi .lab{color:#8a9096}
-  .pa .kpi .val{font-family:"IBM Plex Mono",monospace;font-weight:600}
-  .pa .kpi .delta.up{color:#1f7a4d}
-  .pa .kpi .delta.flat{color:#8a9096}
-  .pa .kpi.alert{border-color:#c4836a;background:#fdf6f3}
-  .pa .card{background:#fff;border:1px solid #e7e8ea;border-radius:4px;--rl:#eef0f1}
-  .pa .card .ch .meta{color:#8a9096}
-  .pa .xr{color:#8a9096}
-  .pa .arr .day{color:#c4836a}
-  .pa .arr .info span{color:#8a9096}
-  .pa .arr .pill{background:#f0eceb;color:#6b5048}
-  .pa table.res th{color:#8a9096}
-  .pa table.res .b{color:#1b1e21}
-  .pa .tag.ok{background:#e7f1ec;color:#1f6a45}
-  .pa .tag.wait{background:#f3ede0;color:#7a6224}
-  .pa .tag.new{background:#fdeee8;color:#a2543a}
+  .gauge{text-align:center}
+  .gauge .gv{font-size:26px;font-weight:800;margin-top:-6px}.gauge .gv small{font-size:15px}
+  .gauge .gs{font-size:11px;color:var(--mut)}
 
-  /* ---------------- PISTE B · Cockpit --------------------------- */
-  /* charcoal shell, cool light content, semantic status, medium radius */
-  .pb .db{background:#f6f7f9;color:#1a1d21}
-  .pb .side{background:#1c2024;color:#c7ccd2;border-right:1px solid #23272c}
-  .pb .brand{color:#fff}
-  .pb .brand .dot{background:#c4836a}
-  .pb nav a{color:#9aa1a9;border-radius:8px}
-  .pb nav a .ic{opacity:.7}
-  .pb nav a.on{background:#2a2f35;color:#fff;font-weight:600}
-  .pb nav a.on .ic{opacity:1}
-  .pb .divlab{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5f666e;padding:16px 11px 6px}
-  .pb .top{background:#fff;border-bottom:1px solid #e6e9ec}
-  .pb .top .sub{color:#7b828a}
-  .pb .who .av{background:#1c2024}
-  .pb .body{background:#f6f7f9}
-  .pb .kpi{background:#fff;border:1px solid #e6e9ec;border-radius:10px;border-top:3px solid #cfd6dd}
-  .pb .kpi.g{border-top-color:#2f9e6b}
-  .pb .kpi.a{border-top-color:#d99a2b}
-  .pb .kpi.n{border-top-color:#3a7ca5}
-  .pb .kpi .lab{color:#7b828a}
-  .pb .kpi .delta.up{color:#2f9e6b}
-  .pb .kpi .delta.flat{color:#7b828a}
-  .pb .card{background:#fff;border:1px solid #e6e9ec;border-radius:12px;--rl:#eef1f4}
-  .pb .card .ch .meta{color:#7b828a}
-  .pb .xr{color:#7b828a}
-  .pb .arr .day{color:#3a7ca5}
-  .pb .arr .info span{color:#7b828a}
-  .pb .arr .pill.confirmed{background:#e6f4ee;color:#1f7a4d}
-  .pb .arr .pill.pending{background:#fbf1de;color:#8a6414}
-  .pb table.res th{color:#7b828a}
-  .pb table.res .b{color:#1a1d21}
-  .pb .tag.ok{background:#e6f4ee;color:#1f7a4d}
-  .pb .tag.wait{background:#fbf1de;color:#8a6414}
-  .pb .tag.new{background:#e8f0f6;color:#2b6285}
+  .pill-card{border-radius:999px;padding:14px 18px;display:flex;align-items:center;gap:14px;background:#141414;color:#fff}
+  .pill-card .num{width:44px;height:44px;border-radius:50%;flex:0 0 44px;display:grid;place-items:center;font-weight:800;font-size:13px;background:#2a2a2a;box-shadow:inset 0 0 0 2px #fff}
+  .pill-card b{display:block;font-size:14px;font-weight:700}
+  .pill-card span{font-size:11.5px;color:#b0b0b0}
 
-  /* ---------------- PISTE C · Ateliers pastel ------------------- */
-  /* cream ground, black hero, pastel section blocks, rounded & warm  */
-  .pc .db{background:#f7f3ec;color:#211d18}
-  .pc .side{background:#f7f3ec;border-right:1px solid #e9e2d5}
-  .pc .brand{color:#211d18}
-  .pc .brand .dot{background:#211d18;border-radius:8px}
-  .pc nav a{color:#6b6154;border-radius:12px}
-  .pc nav a.on{background:#211d18;color:#f7f3ec;font-weight:600}
-  .pc .top .sub{color:#8f8474}
-  .pc .who .av{background:#c4836a}
-  .pc .kpis{grid-template-columns:1.4fr 1fr 1fr 1fr}
-  .pc .kpi{border-radius:18px;background:#fff;border:1px solid #ece5d8}
-  .pc .kpi.hero{background:#211d18;color:#f7f3ec;border:none}
-  .pc .kpi.hero .lab{color:#a99f8f}
-  .pc .kpi.hero .val{font-size:30px}
-  .pc .kpi.sand{background:#f4e7dd}
-  .pc .kpi.sky{background:#e6eef5}
-  .pc .kpi.sage{background:#e7eee4}
-  .pc .kpi .lab{color:#8f8474}
-  .pc .kpi .ico{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:14px;margin-bottom:2px}
-  .pc .kpi .delta.up{color:#1f7a4d}
-  .pc .kpi .delta.flat{color:#8f8474}
-  .pc .card{border-radius:20px;--rl:rgba(33,29,24,.08)}
-  .pc .card.paper{background:#fff;border:1px solid #ece5d8}
-  .pc .card.tintsky{background:#e6eef5}
-  .pc .card .ch .meta{color:#8f8474}
-  .pc .xr{color:#8f8474}
-  .pc .arr .row{border-radius:12px}
-  .pc .arr .row + .row{border-top:none}
-  .pc .arr .day{color:#c4836a}
-  .pc .arr .info span{color:#8f8474}
-  .pc .arr .pill{background:#211d18;color:#f7f3ec}
-  .pc table.res th{color:#8f8474}
-  .pc table.res .b{color:#211d18}
-  .pc .tag.ok{background:#e7eee4;color:#3a6b45}
-  .pc .tag.wait{background:#f4e7dd;color:#8a5a3f}
-  .pc .tag.new{background:#e6eef5;color:#2f5f85}
+  .promo{border-radius:16px;padding:20px;background:#141414;color:#fff;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+  .promo h4{margin:0;font-size:18px;font-weight:800;line-height:1.2}
+  .promo p{margin:0;font-size:12px;color:#b0b0b0}
+  .promo .cta{margin-top:8px;align-self:flex-start;font-size:11.5px;font-weight:700;padding:7px 13px;border-radius:999px;background:#fff;color:#141414}
 
-  /* ---------------- comparison table --------------------------- */
-  .compare{margin-top:72px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
+  .balance{border-radius:16px;padding:16px 18px;background:#141414;color:#fff;display:flex;flex-direction:column;gap:3px}
+  .balance .l{font-size:11px;color:#b0b0b0;font-weight:600}
+  .balance .v{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+  .balance .act{margin-top:8px;display:flex;gap:8px}
+  .balance .act .b{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:8px;border-radius:9px;background:#fff;color:#141414}
+  .balance .act .b.o{background:#ffffff1f;color:#fff}
+
+  .cats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .cats .c{background:#f2f2f2;border-radius:12px;padding:12px 6px;text-align:center;font-size:11px;font-weight:600}
+  .cats .c .e{display:block;font-size:19px;margin-bottom:5px;filter:grayscale(1)}
+
+  .hero{border-radius:16px;padding:22px 24px;background:#141414;color:#fff;display:flex;align-items:center;gap:16px;overflow:hidden}
+  .hero .ht{flex:1}
+  .hero h4{margin:0 0 4px;font-size:19px;font-weight:800;line-height:1.15}
+  .hero p{margin:0 0 12px;font-size:12px;color:#b0b0b0}
+  .hero .cta{font-size:11.5px;font-weight:700;padding:8px 14px;border-radius:999px;background:#fff;color:#141414;display:inline-block}
+  .hero .hh{font-size:60px;filter:grayscale(1);opacity:.85}
+
+  .minis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .mini{background:#fff;border:1px solid var(--cl);border-radius:14px;padding:15px}
+  .mini .l{font-size:11px;color:var(--mut);font-weight:600}
+  .mini .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:3px}
+  .mini .d{font-size:10.5px;color:var(--mut);margin-top:2px}
+
+  /* per-piste layout tweaks only (no colour) */
+  .p3 nav a{margin-right:-15px;border-radius:12px 0 0 12px}
+  .p3 nav a.on{background:var(--cbg,#f4f4f4);color:#141414;box-shadow:none}
+  .p4 nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:6px}
+  .p4 .db .side{background:#fff;border-right:1px solid #e7e7e7}
+  .p4 .db .brand{color:#141414}
+  .p4 .db .navlab{color:#a5a5a5}
+  .p4 .db nav a{flex-direction:column;gap:6px;text-align:center;background:#f4f4f4;border-radius:13px;padding:14px 6px;font-size:11px;color:#6a6a6a}
+  .p4 .db nav a .ic{font-size:16px}
+  .p4 .db nav a.on{background:#141414;color:#fff;box-shadow:none}
+  .p4 .db .acct{color:#6a6a6a}
+  .p4 .db .acct .av{background:#141414;color:#fff}
+
+  .lc1{stroke:#141414}.lc2{stroke:#9a9a9a}
+
+  /* ===== comparison ===== */
+  .compare{margin-top:66px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface)}
   .compare table{width:100%;border-collapse:collapse;font-size:13.5px}
-  .compare th,.compare td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line)}
-  .compare thead th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
-  .compare tbody th{font-weight:600;color:var(--muted);width:150px}
-  .compare td{color:var(--ink)}
+  .compare th,.compare td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+  .compare thead th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .compare tbody th{font-weight:600;color:var(--muted);width:120px}
   .compare tr:last-child td,.compare tr:last-child th{border-bottom:none}
-  .swatch{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:6px;border:1px solid rgba(0,0,0,.15)}
-
-  .foot{margin-top:40px;color:var(--muted);font-size:13px;max-width:62ch}
-
-  @media (prefers-reduced-motion:no-preference){
-    .stage{scroll-behavior:smooth}
-  }
-  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .foot{margin-top:32px;color:var(--muted);font-size:13px;max-width:64ch}
+  :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 </style>
 
 <div class="wrap">
   <header class="lede">
     <p class="kicker">Zappart Pro · tableau de bord</p>
-    <h1>Trois partis pris pour l'écran d'accueil</h1>
-    <p>Même écran, même contenu, trois directions visuelles. L'objectif : sortir du
-      « tout blanc » sans trahir la charte Zappart (Maven&nbsp;Pro, noir, terracotta,
-      pastels). Chaque piste est montrée à l'échelle, avec de vraies données.</p>
-    <div class="legend">
-      <span><b>KPI</b> annonces en ligne · demandes à traiter · revenu 30 j · occupation</span>
-      <span><b>Contenu</b> revenu hebdo · prochaines arrivées · dernières réservations</span>
-    </div>
+    <h1>Quatre dispositions, une seule identité</h1>
+    <p>D'après les 4 maquettes de référence — mais on n'en garde que la
+      <b>disposition</b> : la structure de la barre latérale, l'agencement des
+      cartes, la bannière, la carte solde, la grille d'icônes, les anneaux.</p>
+    <div class="note"><b>Couleurs et police : Zappart.</b> Noir, blanc, gris.
+      Maven&nbsp;Pro partout. Les seules touches colorées sont les pastilles de
+      statut (soldée / acompte / demande), volontairement discrètes.</div>
   </header>
 
-  <!-- ================= PISTE A ================= -->
-  <section class="piste pa">
-    <div class="phead">
-      <span class="plabel">PISTE A</span>
-      <h2>Registre</h2>
-    </div>
-    <p class="pdesc">Blanc cassé froid, encre graphite, chiffres en chasse fixe,
-      angles nets, filets fins. La terracotta n'apparaît qu'en trait d'état actif.
-      <span class="pick">À choisir si</span> l'agence veut un outil sobre, dense,
-      qui se lit comme un livre de comptes.</p>
-    <div class="stage">
-      <div class="artboard">
-        <div class="db">
-          <aside class="side">
-            <div class="brand"><span class="dot">Z</span>Zappart</div>
-            <nav>
-              <a class="on" href="#a"><span class="ic">▦</span>Tableau de bord</a>
-              <a href="#a"><span class="ic">▤</span>Parc</a>
-              <a href="#a"><span class="ic">▥</span>Calendrier</a>
-              <a href="#a"><span class="ic">▧</span>Réservations<span class="sp"></span></a>
-              <a href="#a"><span class="ic">▨</span>Revenus</a>
-              <a href="#a"><span class="ic">▣</span>Paramètres</a>
-            </nav>
-          </aside>
-          <div class="main">
-            <div class="top">
-              <div>
-                <h3>Bonjour, Immobilière Teranga</h3>
-                <div class="sub">Lundi 1 septembre · 3 demandes en attente</div>
+  <!-- ============ PISTE 1 ============ -->
+  <section class="piste p1">
+    <div class="phead"><span class="plabel">DISPOSITION · AEUXGLOBAL</span><h2>Piste 1 · Colonne dense</h2></div>
+    <p class="pdesc">Barre latérale foncée avec bloc « compte » en bas, rangée de
+      3 (jauge · donut · liste), pastille noire pour l'indicateur clé, carte
+      d'appel à l'action. <span class="pick">Beaucoup d'information</span> visible
+      sans défiler.</p>
+    <div class="stage"><div class="artboard"><div class="db">
+      <aside class="side">
+        <div class="brand">Zappart</div>
+        <div class="navlab">Navigation</div>
+        <nav>
+          <a class="on"><span class="ic">▦</span>Tableau de bord</a>
+          <a><span class="ic">▤</span>Parc</a>
+          <a><span class="ic">▥</span>Calendrier</a>
+          <a><span class="ic">▧</span>Réservations</a>
+          <a><span class="ic">◷</span>Revenus</a>
+          <a><span class="ic">◔</span>Paramètres</a>
+        </nav>
+        <div class="acct"><span class="av">IT</span><div><b>Immobilière Teranga</b><span>Agence · Dakar</span></div></div>
+      </aside>
+      <div class="main">
+        <div class="top">
+          <div><h3>Tableau de bord</h3><div class="sub">Lundi 1 septembre · 3 demandes en attente</div></div>
+          <span class="btn">+ Ajouter une annonce</span>
+        </div>
+        <div class="body">
+          <div class="kpis">
+            <div class="kpi"><span class="lab">Annonces en ligne</span><span class="val">18</span><div class="spark"><i></i><i></i><i class="a"></i><i></i><i class="a"></i><i class="a"></i><i></i></div></div>
+            <div class="kpi"><span class="lab">Demandes à traiter</span><span class="val">03</span><span class="delta dn">réponse &lt; 2 h</span></div>
+            <div class="kpi"><span class="lab">Revenu · 30 j</span><span class="val">2,45 <small>M FCFA</small></span><span class="delta up">▲ 12 %</span></div>
+            <div class="kpi"><span class="lab">Occupation</span><span class="val">76 <small>%</small></span><span class="delta up">▲ 4 pts</span></div>
+          </div>
+          <div class="row3">
+            <div class="card">
+              <div class="ch"><h4>Taux de remplissage</h4></div>
+              <div class="gauge">
+                <svg viewBox="0 0 140 80" width="150" class="chartwrap">
+                  <path d="M12,72 A56,56 0 0 1 128,72" fill="none" stroke="#e7e7e7" stroke-width="13" stroke-linecap="round"/>
+                  <path d="M12,72 A56,56 0 0 1 128,72" fill="none" stroke="#141414" stroke-width="13" stroke-linecap="round" stroke-dasharray="127 176" pathLength="176"/>
+                </svg>
+                <div class="gv">72<small>%</small></div>
+                <div class="gs">écart au potentiel : 2 %</div>
               </div>
-              <div class="who"><span class="av">IT</span>Immobilière Teranga</div>
             </div>
-            <div class="body">
-              <div class="kpis">
-                <div class="kpi"><span class="lab">Annonces en ligne</span><span class="val">18</span><span class="delta flat">— stable</span></div>
-                <div class="kpi alert"><span class="lab">Demandes à traiter</span><span class="val">03</span><span class="delta" style="color:#a2543a">à répondre &lt; 2 h</span></div>
-                <div class="kpi"><span class="lab">Revenu · 30 j</span><span class="val">2,45<small> M</small></span><span class="delta up">▲ 12 %</span></div>
-                <div class="kpi"><span class="lab">Occupation</span><span class="val">76<small> %</small></span><span class="delta up">▲ 4 pts</span></div>
+            <div class="card">
+              <div class="ch"><h4>Répartition · 30 j</h4></div>
+              <div class="donut">
+                <div class="ring"><div class="rc">142<span>résa</span></div></div>
+                <div class="lg">
+                  <div class="li"><i style="background:#141414"></i>Journalier<b>48 %</b></div>
+                  <div class="li"><i style="background:#5c5c5c"></i>Mensuel<b>22 %</b></div>
+                  <div class="li"><i style="background:#9a9a9a"></i>Visite<b>18 %</b></div>
+                  <div class="li"><i style="background:#d7d7d7"></i>Service<b>12 %</b></div>
+                </div>
               </div>
-              <div class="grid2">
-                <div class="card">
-                  <div class="ch"><h4>Revenu hebdomadaire</h4><span class="meta">12 dernières semaines · FCFA</span></div>
-                  <div class="chartwrap">
-                    <svg viewBox="0 -8 600 176" role="img" aria-label="Revenu hebdomadaire, tendance à la hausse">
-                      <line x1="0" y1="150" x2="600" y2="150" stroke="#e7e8ea"/>
-                      <line x1="0" y1="80" x2="600" y2="80" stroke="#eef0f1"/>
-                      <line x1="0" y1="10" x2="600" y2="10" stroke="#eef0f1"/>
-                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22 L600,160 L0,160 Z" fill="#c4836a" fill-opacity="0.10"/>
-                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22" fill="none" stroke="#c4836a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      <circle cx="600" cy="22" r="3.6" fill="#c4836a"/>
-                    </svg>
-                    <div class="xr"><span>juin</span><span>juil.</span><span>août</span></div>
-                  </div>
-                </div>
-                <div class="card">
-                  <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4</span></div>
-                  <div class="arr">
-                    <div class="row"><span class="day">MAR<br>02/09</span><span class="info"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="pill">14 h 00</span></div>
-                    <div class="row"><span class="day">MER<br>03/09</span><span class="info"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="pill">12 h 00</span></div>
-                    <div class="row"><span class="day">VEN<br>05/09</span><span class="info"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="pill">16 h 00</span></div>
-                    <div class="row"><span class="day">SAM<br>06/09</span><span class="info"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="pill">10 h 30</span></div>
-                  </div>
-                </div>
+            </div>
+            <div class="card">
+              <div class="ch"><h4>Par quartier</h4><span class="meta">ce mois</span></div>
+              <div class="arr">
+                <div class="r" style="border:none;padding:6px 3px"><span class="i"><b>Almadies</b></span><span class="p">34 %</span></div>
+                <div class="r" style="border:none;padding:6px 3px"><span class="i"><b>Ngor</b></span><span class="p">26 %</span></div>
+                <div class="r" style="border:none;padding:6px 3px"><span class="i"><b>Mermoz</b></span><span class="p">21 %</span></div>
+                <div class="r" style="border:none;padding:6px 3px"><span class="i"><b>Ouakam</b></span><span class="p">19 %</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="card">
+              <div class="ch"><h4>Revenu hebdomadaire</h4><span class="meta">12 semaines · FCFA</span></div>
+              <div class="chartwrap">
+                <svg viewBox="0 -8 600 168" role="img" aria-label="Revenu hebdomadaire en hausse">
+                  <line x1="0" y1="150" x2="600" y2="150" stroke="#ededed"/>
+                  <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22 L600,160 L0,160 Z" fill="#141414" fill-opacity="0.07"/>
+                  <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22" fill="none" stroke="#141414" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="600" cy="22" r="3.6" fill="#141414"/>
+                </svg>
+                <div class="xr"><span>juin</span><span>juillet</span><span>août</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4</span></div>
+              <div class="arr">
+                <div class="r"><span class="d">MAR<br>02/09</span><span class="i"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="p">14 h</span></div>
+                <div class="r"><span class="d">MER<br>03/09</span><span class="i"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="p">12 h</span></div>
+                <div class="r"><span class="d">VEN<br>05/09</span><span class="i"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="p">16 h</span></div>
+                <div class="r"><span class="d">SAM<br>06/09</span><span class="i"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="p">10 h 30</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="pill-card"><span class="num">4,8</span><div><b>Note moyenne des séjours</b><span>96 avis · 30 derniers jours</span></div></div>
+            <div class="promo"><h4>Parrainez une agence</h4><p>Faites entrer un confrère dans le réseau et gagnez une commission bonus.</p><span class="cta">Envoyer une invitation</span></div>
+          </div>
+          <div class="card">
+            <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout</span></div>
+            <table class="res">
+              <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
+              <tbody>
+                <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="n">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
+                <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="n">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
+                <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="n">210 000</td><td><span class="tag new">Demande</span></td></tr>
+                <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="n">15 000</td><td><span class="tag ok">Payée</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ============ PISTE 2 ============ -->
+  <section class="piste p2">
+    <div class="phead"><span class="plabel">DISPOSITION · FOODMEAL</span><h2>Piste 2 · Accueil &amp; solde</h2></div>
+    <p class="pdesc">En-tête « bonjour » + recherche, carte <span class="pick">solde
+      disponible</span> mise en avant à droite avec bouton Retirer, tuiles de type
+      en accès rapide. Orienté action quotidienne.</p>
+    <div class="stage"><div class="artboard"><div class="db">
+      <aside class="side">
+        <div class="brand">Zappart</div>
+        <nav>
+          <a class="on"><span class="ic">▦</span>Tableau de bord</a>
+          <a><span class="ic">▤</span>Parc</a>
+          <a><span class="ic">▥</span>Calendrier</a>
+          <a><span class="ic">✉</span>Réservations</a>
+          <a><span class="ic">◷</span>Revenus</a>
+          <a><span class="ic">⚙</span>Paramètres</a>
+        </nav>
+        <div class="acct"><span class="av">IT</span><div><b>Immobilière Teranga</b><span>Agence · Dakar</span></div></div>
+      </aside>
+      <div class="main">
+        <div class="top">
+          <div><h3>Bonjour, Teranga 👋</h3></div>
+          <span class="search">🔎 Rechercher un bien, un client…</span>
+          <div class="who"><span class="av">IT</span></div>
+        </div>
+        <div class="body">
+          <div class="row2">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div class="kpis" style="grid-template-columns:1fr 1fr">
+                <div class="kpi"><span class="lab">Annonces en ligne</span><span class="val">18</span><span class="delta">2 en validation</span></div>
+                <div class="kpi"><span class="lab">Demandes à traiter</span><span class="val">3</span><span class="delta dn">réponse &lt; 2 h</span></div>
+                <div class="kpi"><span class="lab">Revenu · 30 j</span><span class="val">2,45 <small>M</small></span><span class="delta up">▲ 12 %</span></div>
+                <div class="kpi"><span class="lab">Occupation</span><span class="val">76 <small>%</small></span><span class="delta up">▲ 4 pts</span></div>
               </div>
               <div class="card">
-                <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout</span></div>
-                <table class="res">
-                  <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
-                  <tbody>
-                    <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="num">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
-                    <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="num">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
-                    <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="num">210 000</td><td><span class="tag new">Demande</span></td></tr>
-                    <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="num">15 000</td><td><span class="tag ok">Payée</span></td></tr>
-                  </tbody>
-                </table>
+                <div class="ch"><h4>Accès rapide</h4></div>
+                <div class="cats">
+                  <div class="c"><span class="e">🏖️</span>Journalier</div>
+                  <div class="c"><span class="e">🗓️</span>Mensuel</div>
+                  <div class="c"><span class="e">👁️</span>Visite</div>
+                  <div class="c"><span class="e">🧰</span>Service</div>
+                  <div class="c"><span class="e">🚀</span>Boost</div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= PISTE B ================= -->
-  <section class="piste pb">
-    <div class="phead">
-      <span class="plabel">PISTE B</span>
-      <h2>Cockpit</h2>
-    </div>
-    <p class="pdesc">Barre latérale charbon, zone de travail claire et légèrement
-      froide, statuts en couleur sémantique (vert / ambre), rayons moyens.
-      <span class="pick">À choisir si</span> l'agence passe la journée dedans et veut
-      un poste de pilotage lisible d'un coup d'œil.</p>
-    <div class="stage">
-      <div class="artboard">
-        <div class="db">
-          <aside class="side">
-            <div class="brand"><span class="dot">Z</span>Zappart</div>
-            <nav>
-              <div class="divlab">Pilotage</div>
-              <a class="on" href="#b"><span class="ic">◱</span>Tableau de bord</a>
-              <a href="#b"><span class="ic">◰</span>Réservations</a>
-              <a href="#b"><span class="ic">◲</span>Calendrier</a>
-              <div class="divlab">Gestion</div>
-              <a href="#b"><span class="ic">◳</span>Parc</a>
-              <a href="#b"><span class="ic">▦</span>Revenus</a>
-              <a href="#b"><span class="ic">⚙</span>Paramètres</a>
-            </nav>
-          </aside>
-          <div class="main">
-            <div class="top">
-              <div>
-                <h3>Tableau de bord</h3>
-                <div class="sub">Immobilière Teranga · mis à jour il y a 2 min</div>
-              </div>
-              <div class="who"><span class="av">IT</span>Immobilière Teranga</div>
-            </div>
-            <div class="body">
-              <div class="kpis">
-                <div class="kpi n"><span class="lab">Annonces en ligne</span><span class="val">18</span><span class="delta flat">2 en validation</span></div>
-                <div class="kpi a"><span class="lab">Demandes à traiter</span><span class="val">3</span><span class="delta" style="color:#8a6414">réponse attendue</span></div>
-                <div class="kpi g"><span class="lab">Revenu · 30 j</span><span class="val">2,45<small> M</small></span><span class="delta up">▲ 12 % vs. mois -1</span></div>
-                <div class="kpi g"><span class="lab">Occupation</span><span class="val">76<small> %</small></span><span class="delta up">▲ 4 pts</span></div>
-              </div>
-              <div class="grid2">
-                <div class="card">
-                  <div class="ch"><h4>Revenu hebdomadaire</h4><span class="meta">12 sem. · FCFA</span></div>
-                  <div class="chartwrap">
-                    <svg viewBox="0 -8 600 176" role="img" aria-label="Revenu hebdomadaire, tendance à la hausse">
-                      <line x1="0" y1="150" x2="600" y2="150" stroke="#e6e9ec"/>
-                      <line x1="0" y1="80" x2="600" y2="80" stroke="#eef1f4"/>
-                      <line x1="0" y1="10" x2="600" y2="10" stroke="#eef1f4"/>
-                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22 L600,160 L0,160 Z" fill="#3a7ca5" fill-opacity="0.12"/>
-                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22" fill="none" stroke="#3a7ca5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                      <circle cx="600" cy="22" r="4" fill="#3a7ca5" stroke="#fff" stroke-width="2"/>
-                    </svg>
-                    <div class="xr"><span>juin</span><span>juillet</span><span>août</span></div>
-                  </div>
-                </div>
-                <div class="card">
-                  <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4 à venir</span></div>
-                  <div class="arr">
-                    <div class="row"><span class="day">02<br>SEP</span><span class="info"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="pill confirmed">Confirmée</span></div>
-                    <div class="row"><span class="day">03<br>SEP</span><span class="info"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="pill confirmed">Confirmée</span></div>
-                    <div class="row"><span class="day">05<br>SEP</span><span class="info"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="pill pending">Acompte</span></div>
-                    <div class="row"><span class="day">06<br>SEP</span><span class="info"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="pill confirmed">Payée</span></div>
-                  </div>
-                </div>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div class="balance">
+                <span class="l">Solde disponible</span>
+                <span class="v">1 240 000 FCFA</span>
+                <div class="act"><span class="b">Retirer</span><span class="b o">Historique</span></div>
               </div>
               <div class="card">
-                <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout →</span></div>
-                <table class="res">
-                  <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
-                  <tbody>
-                    <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="num">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
-                    <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="num">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
-                    <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="num">210 000</td><td><span class="tag new">Demande</span></td></tr>
-                    <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="num">15 000</td><td><span class="tag ok">Payée</span></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= PISTE C ================= -->
-  <section class="piste pc">
-    <div class="phead">
-      <span class="plabel">PISTE C</span>
-      <h2>Ateliers pastel</h2>
-    </div>
-    <p class="pdesc">Fond crème, carte titre noire avec le chiffre clé, blocs pastel
-      (sable, ciel, sauge), cartes très arrondies, typo plus généreuse — le langage
-      de l'espace partenaire mobile porté sur grand écran.
-      <span class="pick">À choisir si</span> on veut que Zappart Pro se reconnaisse
-      immédiatement comme du Zappart.</p>
-    <div class="stage">
-      <div class="artboard">
-        <div class="db">
-          <aside class="side">
-            <div class="brand"><span class="dot">Z</span>Zappart</div>
-            <nav>
-              <a class="on" href="#c"><span class="ic">◆</span>Tableau de bord</a>
-              <a href="#c"><span class="ic">▤</span>Parc</a>
-              <a href="#c"><span class="ic">▦</span>Calendrier</a>
-              <a href="#c"><span class="ic">✦</span>Réservations</a>
-              <a href="#c"><span class="ic">◈</span>Revenus</a>
-              <a href="#c"><span class="ic">●</span>Paramètres</a>
-            </nav>
-          </aside>
-          <div class="main">
-            <div class="top">
-              <div>
-                <h3>Bonjour, Teranga 👋</h3>
-                <div class="sub">Voici votre activité du jour</div>
-              </div>
-              <div class="who"><span class="av">IT</span>Immobilière Teranga</div>
-            </div>
-            <div class="body">
-              <div class="kpis">
-                <div class="kpi hero">
-                  <span class="lab">Revenu · 30 jours</span>
-                  <span class="val">2 450 000 <small style="font-size:14px">FCFA</small></span>
-                  <span class="delta" style="color:#8fd0aa">▲ 12 % vs. mois dernier</span>
-                </div>
-                <div class="kpi sand"><span class="ico" style="background:#e6cdbc">🏠</span><span class="lab">Annonces</span><span class="val">18</span></div>
-                <div class="kpi sky"><span class="ico" style="background:#cfe0ee">📩</span><span class="lab">Demandes</span><span class="val">3</span></div>
-                <div class="kpi sage"><span class="ico" style="background:#d3e2cc">📊</span><span class="lab">Occupation</span><span class="val">76 %</span></div>
-              </div>
-              <div class="grid2">
-                <div class="card paper">
-                  <div class="ch"><h4>Revenu hebdomadaire</h4><span class="meta">12 dernières semaines</span></div>
-                  <div class="chartwrap">
-                    <svg viewBox="0 -8 600 176" role="img" aria-label="Revenu hebdomadaire, tendance à la hausse">
-                      <line x1="0" y1="150" x2="600" y2="150" stroke="#ece5d8"/>
-                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22 L600,160 L0,160 Z" fill="#c4836a" fill-opacity="0.16"/>
-                      <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22" fill="none" stroke="#c4836a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-                      <circle cx="600" cy="22" r="4.5" fill="#211d18"/>
-                    </svg>
-                    <div class="xr"><span>juin</span><span>juillet</span><span>août</span></div>
-                  </div>
-                </div>
-                <div class="card tintsky">
-                  <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4</span></div>
-                  <div class="arr">
-                    <div class="row"><span class="day">MAR<br>02/09</span><span class="info"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="pill">14 h</span></div>
-                    <div class="row"><span class="day">MER<br>03/09</span><span class="info"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="pill">12 h</span></div>
-                    <div class="row"><span class="day">VEN<br>05/09</span><span class="info"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="pill">16 h</span></div>
-                    <div class="row"><span class="day">SAM<br>06/09</span><span class="info"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="pill">10 h 30</span></div>
+                <div class="ch"><h4>Répartition · 30 j</h4></div>
+                <div class="donut">
+                  <div class="ring"><div class="rc">142<span>résa</span></div></div>
+                  <div class="lg">
+                    <div class="li"><i style="background:#141414"></i>Journalier<b>48 %</b></div>
+                    <div class="li"><i style="background:#5c5c5c"></i>Mensuel<b>22 %</b></div>
+                    <div class="li"><i style="background:#9a9a9a"></i>Visite<b>18 %</b></div>
+                    <div class="li"><i style="background:#d7d7d7"></i>Service<b>12 %</b></div>
                   </div>
                 </div>
               </div>
-              <div class="card paper">
-                <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout</span></div>
-                <table class="res">
-                  <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
-                  <tbody>
-                    <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="num">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
-                    <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="num">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
-                    <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="num">210 000</td><td><span class="tag new">Demande</span></td></tr>
-                    <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="num">15 000</td><td><span class="tag ok">Payée</span></td></tr>
-                  </tbody>
-                </table>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="card">
+              <div class="ch"><h4>Revenu hebdomadaire</h4><span class="meta">12 semaines · FCFA</span></div>
+              <div class="chartwrap">
+                <svg viewBox="0 -8 600 168" role="img" aria-label="Revenu hebdomadaire en hausse">
+                  <line x1="0" y1="150" x2="600" y2="150" stroke="#ededed"/>
+                  <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22 L600,160 L0,160 Z" fill="#141414" fill-opacity="0.07"/>
+                  <path d="M0,133 L54.5,150 L109,116 L163.6,95 L218.2,108 L272.7,142 L327.3,82 L381.8,48 L436.4,65 L490.9,74 L545.5,14 L600,22" fill="none" stroke="#141414" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="600" cy="22" r="3.6" fill="#141414"/>
+                </svg>
+                <div class="xr"><span>juin</span><span>juillet</span><span>août</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4</span></div>
+              <div class="arr">
+                <div class="r"><span class="d">MAR<br>02/09</span><span class="i"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="p">14 h</span></div>
+                <div class="r"><span class="d">MER<br>03/09</span><span class="i"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="p">12 h</span></div>
+                <div class="r"><span class="d">VEN<br>05/09</span><span class="i"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="p">16 h</span></div>
+                <div class="r"><span class="d">SAM<br>06/09</span><span class="i"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="p">10 h 30</span></div>
               </div>
             </div>
           </div>
+          <div class="card">
+            <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout</span></div>
+            <table class="res">
+              <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
+              <tbody>
+                <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="n">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
+                <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="n">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
+                <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="n">210 000</td><td><span class="tag new">Demande</span></td></tr>
+                <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="n">15 000</td><td><span class="tag ok">Payée</span></td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </div></div></div>
   </section>
 
-  <!-- ================= COMPARE ================= -->
+  <!-- ============ PISTE 3 ============ -->
+  <section class="piste p3">
+    <div class="phead"><span class="plabel">DISPOSITION · JOBIE</span><h2>Piste 3 · Cartes fortes</h2></div>
+    <p class="pdesc">Onglet actif « rattaché » à la barre latérale, rangée de 4
+      cartes KPI <span class="pick">pleines (noir → gris)</span>, graphe deux
+      séries, anneaux de progression. Le plus affirmé visuellement.</p>
+    <div class="stage"><div class="artboard"><div class="db">
+      <aside class="side">
+        <div class="brand">Zappart</div>
+        <nav>
+          <a class="on"><span class="ic">▦</span>Tableau de bord</a>
+          <a><span class="ic">▤</span>Parc</a>
+          <a><span class="ic">▥</span>Calendrier</a>
+          <a><span class="ic">✉</span>Réservations</a>
+          <a><span class="ic">◷</span>Revenus</a>
+          <a><span class="ic">⚙</span>Paramètres</a>
+        </nav>
+        <div class="acct"><span class="av">IT</span><div><b>Immobilière Teranga</b><span>Agence · Dakar</span></div></div>
+      </aside>
+      <div class="main">
+        <div class="top">
+          <div><h3>Tableau de bord</h3></div>
+          <span class="search">🔎 Rechercher…</span>
+          <div class="who"><span class="av">IT</span>Immobilière Teranga</div>
+        </div>
+        <div class="body">
+          <div class="kpis">
+            <div class="kpi dark"><span class="lab">Annonces en ligne</span><span class="val">18</span><span class="delta">2 en validation</span></div>
+            <div class="kpi dark d2"><span class="lab">Demandes à traiter</span><span class="val">3</span><span class="delta">réponse &lt; 2 h</span></div>
+            <div class="kpi dark d3"><span class="lab">Revenu · 30 j</span><span class="val">2,45 M</span><span class="delta">▲ 12 %</span></div>
+            <div class="kpi dark d4"><span class="lab">Occupation</span><span class="val">76 %</span><span class="delta">▲ 4 pts</span></div>
+          </div>
+          <div class="row2">
+            <div class="card">
+              <div class="ch"><h4>Réservations · par type</h4><span class="meta">ce mois</span></div>
+              <div class="rings3">
+                <div class="rg"><div class="rr"><b>66%</b></div>Journalier</div>
+                <div class="rg"><div class="rr"><b>31%</b></div>Mensuel</div>
+                <div class="rg"><div class="rr"><b>22%</b></div>Visite</div>
+              </div>
+              <div class="donut" style="margin-top:4px">
+                <div class="ring"><div class="rc">142<span>résa</span></div></div>
+                <div class="lg">
+                  <div class="li"><i style="background:#141414"></i>Journalier<b>48 %</b></div>
+                  <div class="li"><i style="background:#5c5c5c"></i>Mensuel<b>22 %</b></div>
+                  <div class="li"><i style="background:#9a9a9a"></i>Visite<b>18 %</b></div>
+                  <div class="li"><i style="background:#d7d7d7"></i>Service<b>12 %</b></div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ch"><h4>Réservations vs. visites</h4><span class="meta">ce mois</span></div>
+              <div class="chartwrap">
+                <svg viewBox="0 -8 600 168" role="img" aria-label="Deux séries hebdomadaires">
+                  <line x1="0" y1="150" x2="600" y2="150" stroke="#ededed"/>
+                  <line x1="0" y1="80" x2="600" y2="80" stroke="#f3f3f3"/>
+                  <path d="M0,120 C60,90 100,70 160,88 C220,106 260,60 320,52 C380,44 420,96 480,72 C540,50 570,40 600,36" fill="none" class="lc1" stroke-width="2.4" stroke-linecap="round"/>
+                  <path d="M0,96 C60,110 110,118 170,104 C230,90 270,120 330,124 C390,128 430,100 490,110 C540,118 570,124 600,120" fill="none" class="lc2" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="5 4"/>
+                  <circle cx="600" cy="36" r="3.6" fill="#141414"/>
+                </svg>
+                <div class="xr"><span>S1</span><span>S3</span><span>S5</span><span>S7</span><span>S9</span></div>
+                <div style="display:flex;gap:16px;font-size:11px;margin-top:8px;color:var(--mut)">
+                  <span><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#141414;margin-right:5px"></i>Réservations</span>
+                  <span><i style="display:inline-block;width:14px;height:0;border-top:2px dashed #9a9a9a;margin-right:5px;vertical-align:middle"></i>Visites</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="card">
+              <div class="ch"><h4>Prochaines arrivées</h4><span class="meta">4</span></div>
+              <div class="arr">
+                <div class="r"><span class="d">MAR<br>02/09</span><span class="i"><b>Villa Almadies · 3 ch</b><span>M. Diallo · 3 nuits</span></span><span class="p">14 h</span></div>
+                <div class="r"><span class="d">MER<br>03/09</span><span class="i"><b>Studio Ngor</b><span>A. Sow · 1 semaine</span></span><span class="p">12 h</span></div>
+                <div class="r"><span class="d">VEN<br>05/09</span><span class="i"><b>Appart. Mermoz · 2 ch</b><span>K. Fall · mensuel</span></span><span class="p">16 h</span></div>
+                <div class="r"><span class="d">SAM<br>06/09</span><span class="i"><b>Chambre Ouakam</b><span>Visite · N. Ba</span></span><span class="p">10 h 30</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ch"><h4>Réservations par quartier</h4></div>
+              <div class="bars" style="height:132px">
+                <div class="bar hi" style="height:78%"><span>Almadies</span></div>
+                <div class="bar" style="height:60%"><span>Ngor</span></div>
+                <div class="bar" style="height:48%"><span>Mermoz</span></div>
+                <div class="bar" style="height:44%"><span>Ouakam</span></div>
+                <div class="bar" style="height:30%"><span>Yoff</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ch"><h4>Dernières réservations</h4><span class="meta">voir tout</span></div>
+            <table class="res">
+              <thead><tr><th>Bien</th><th>Client</th><th>Type</th><th>Dates</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
+              <tbody>
+                <tr><td class="b">Villa Almadies</td><td>M. Diallo</td><td>Journalier</td><td>02–05 sept.</td><td class="n">375 000</td><td><span class="tag ok">Soldée</span></td></tr>
+                <tr><td class="b">Appart. Mermoz</td><td>K. Fall</td><td>Mensuel</td><td>05 sept.</td><td class="n">450 000</td><td><span class="tag wait">Acompte</span></td></tr>
+                <tr><td class="b">Studio Ngor</td><td>A. Sow</td><td>Journalier</td><td>03–10 sept.</td><td class="n">210 000</td><td><span class="tag new">Demande</span></td></tr>
+                <tr><td class="b">Chambre Ouakam</td><td>N. Ba</td><td>Visite</td><td>06 sept.</td><td class="n">15 000</td><td><span class="tag ok">Payée</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ============ PISTE 4 ============ -->
+  <section class="piste p4">
+    <div class="phead"><span class="plabel">DISPOSITION · TRUST-ESTATE</span><h2>Piste 4 · Immo</h2></div>
+    <p class="pdesc">Barre latérale <span class="pick">blanche en grille d'icônes</span>,
+      bannière noire pleine largeur, 3 mini-cartes de chiffres, tableau
+      Payé / En attente. Le code « logiciel immobilier » que les agences connaissent.</p>
+    <div class="stage"><div class="artboard"><div class="db">
+      <aside class="side">
+        <div class="brand">Zappart</div>
+        <div class="navlab">Menu</div>
+        <nav>
+          <a class="on"><span class="ic">▦</span>Bord</a>
+          <a><span class="ic">▤</span>Parc</a>
+          <a><span class="ic">▥</span>Agenda</a>
+          <a><span class="ic">✉</span>Résas</a>
+          <a><span class="ic">◷</span>Revenus</a>
+          <a><span class="ic">⚙</span>Réglages</a>
+        </nav>
+        <div class="acct"><span class="av">IT</span><div><b>Teranga</b><span>Agence</span></div></div>
+      </aside>
+      <div class="main">
+        <div class="top">
+          <div><h3>Bonjour, Teranga 👋</h3></div>
+          <span class="search">🔎 Rechercher</span>
+          <div class="who"><span class="av">IT</span></div>
+        </div>
+        <div class="body">
+          <div class="row2" style="grid-template-columns:1.3fr 1.7fr">
+            <div class="hero">
+              <div class="ht">
+                <h4>Passez vos annonces à l'échelle</h4>
+                <p>Rattachez vos biens à un immeuble et gérez tout un parc d'un coup.</p>
+                <span class="cta">Découvrir</span>
+              </div>
+              <span class="hh">🏢</span>
+            </div>
+            <div class="minis">
+              <div class="mini"><span class="l">Revenu · 30 j</span><div class="v">2,45 M</div><div class="d">▲ 8,2 %</div></div>
+              <div class="mini"><span class="l">Commission Zappart</span><div class="v">612 k</div><div class="d">▼ 5,2 %</div></div>
+              <div class="mini"><span class="l">Net à reverser</span><div class="v">1,84 M</div><div class="d">▲ 2,2 %</div></div>
+            </div>
+          </div>
+          <div class="kpis">
+            <div class="kpi"><span class="lab">Annonces en ligne</span><span class="val">18</span><span class="delta">2 en validation</span></div>
+            <div class="kpi"><span class="lab">Demandes à traiter</span><span class="val">3</span><span class="delta dn">réponse &lt; 2 h</span></div>
+            <div class="kpi"><span class="lab">Réservations · 30 j</span><span class="val">142</span><span class="delta up">▲ 9 %</span></div>
+            <div class="kpi"><span class="lab">Occupation</span><span class="val">76 <small>%</small></span><span class="delta up">▲ 4 pts</span></div>
+          </div>
+          <div class="row2">
+            <div class="card">
+              <div class="ch"><h4>Répartition par type</h4><span class="meta">30 j</span></div>
+              <div class="donut">
+                <div class="ring"><div class="rc">142<span>réservations</span></div></div>
+                <div class="lg">
+                  <div class="li"><i style="background:#141414"></i>Journalier<b>48 %</b></div>
+                  <div class="li"><i style="background:#5c5c5c"></i>Mensuel<b>22 %</b></div>
+                  <div class="li"><i style="background:#9a9a9a"></i>Visite<b>18 %</b></div>
+                  <div class="li"><i style="background:#d7d7d7"></i>Service<b>12 %</b></div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ch"><h4>Revenu mensuel</h4><span class="meta">FCFA</span></div>
+              <div class="bars">
+                <div class="bar" style="height:40%"><span>Mar</span></div>
+                <div class="bar" style="height:52%"><span>Avr</span></div>
+                <div class="bar" style="height:46%"><span>Mai</span></div>
+                <div class="bar hi" style="height:88%"><span>Juin</span></div>
+                <div class="bar" style="height:62%"><span>Juil</span></div>
+                <div class="bar" style="height:74%"><span>Août</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ch"><h4>Rapport réservations</h4><span class="meta">voir tout</span></div>
+            <table class="res">
+              <thead><tr><th>Client</th><th>Bien</th><th>Type</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
+              <tbody>
+                <tr><td class="b">M. Diallo</td><td>Villa Almadies</td><td>Journalier</td><td class="n">375 000</td><td><span class="tag ok">Payé</span></td></tr>
+                <tr><td class="b">K. Fall</td><td>Appart. Mermoz</td><td>Mensuel</td><td class="n">450 000</td><td><span class="tag wait">En attente</span></td></tr>
+                <tr><td class="b">A. Sow</td><td>Studio Ngor</td><td>Journalier</td><td class="n">210 000</td><td><span class="tag new">Demande</span></td></tr>
+                <tr><td class="b">N. Ba</td><td>Chambre Ouakam</td><td>Visite</td><td class="n">15 000</td><td><span class="tag ok">Payé</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
   <div class="compare">
     <table>
-      <thead>
-        <tr><th>Critère</th><th>A · Registre</th><th>B · Cockpit</th><th>C · Ateliers pastel</th></tr>
-      </thead>
+      <thead><tr><th>Critère</th><th>1 · Colonne dense</th><th>2 · Accueil &amp; solde</th><th>3 · Cartes fortes</th><th>4 · Immo</th></tr></thead>
       <tbody>
-        <tr>
-          <th>Fond</th>
-          <td><span class="swatch" style="background:#fbfbfc"></span>blanc cassé froid</td>
-          <td><span class="swatch" style="background:#1c2024"></span>shell charbon + <span class="swatch" style="background:#f6f7f9"></span>gris clair</td>
-          <td><span class="swatch" style="background:#f7f3ec"></span>crème</td>
-        </tr>
-        <tr>
-          <th>Accent</th>
-          <td>terracotta, en filet seulement</td>
-          <td>terracotta (marque) + vert / ambre (état)</td>
-          <td>noir + pastels par bloc</td>
-        </tr>
-        <tr>
-          <th>Angles</th><td>4 px, nets</td><td>10–12 px</td><td>18–20 px</td>
-        </tr>
-        <tr>
-          <th>Densité</th><td>élevée, table-first</td><td>moyenne, carte + statut</td><td>aérée, gros chiffres</td>
-        </tr>
-        <tr>
-          <th>Chiffres</th><td>chasse fixe (IBM Plex Mono)</td><td>Maven Pro tabulaire</td><td>Maven Pro 800, grand</td>
-        </tr>
-        <tr>
-          <th>Ambiance</th><td>livre de comptes, sérieux</td><td>poste de pilotage</td><td>Zappart, chaleureux</td>
-        </tr>
-        <tr>
-          <th>Risque</th>
-          <td>peut sembler austère</td>
-          <td>le plus « SaaS générique »</td>
-          <td>demande de la rigueur pour ne pas faire brouillon</td>
-        </tr>
+        <tr><th>En-tête</th><td>titre + bouton d'action</td><td>« bonjour » + recherche</td><td>titre + recherche + agence</td><td>« bonjour » + recherche</td></tr>
+        <tr><th>Barre latérale</th><td>foncée, libellé + compte</td><td>foncée, simple</td><td>foncée, onglet rattaché</td><td>blanche, grille d'icônes</td></tr>
+        <tr><th>Rangée KPI</th><td>4 cartes blanches (+ sparkline)</td><td>2×2 compact</td><td>4 cartes pleines noir→gris</td><td>4 blanches + bannière au-dessus</td></tr>
+        <tr><th>Élément fort</th><td>pastille noire « note »</td><td>carte solde + Retirer</td><td>anneaux + graphe 2 séries</td><td>bannière noire pleine largeur</td></tr>
+        <tr><th>Densité</th><td>haute</td><td>moyenne</td><td>moyenne</td><td>aérée</td></tr>
+        <tr><th>Impression</th><td>tout est là, sérieux</td><td>quotidien, orienté action</td><td>affirmé, effet démo</td><td>familier pour une agence</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p class="foot">Toutes les pistes gardent Maven&nbsp;Pro, la même grille (barre
-    latérale 212 px + contenu), les mêmes composants (KPI, graphe, liste, table) et
-    les mêmes statuts métier. Choisir une piste = fixer fond, accent, rayon et
-    densité ; le style des écrans suivants (Parc, Calendrier, Réservations…) en
-    découle.</p>
+  <p class="foot">Toutes identiques côté marque : noir / blanc / gris, Maven&nbsp;Pro,
+    mêmes composants (KPI, graphe, donut, arrivées, table). On choisit une
+    <b>disposition</b> ; le style des écrans suivants (Parc, Calendrier,
+    Réservations, Revenus) en découle.</p>
 </div>
