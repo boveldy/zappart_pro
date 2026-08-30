@@ -7,31 +7,32 @@ import 'annonce_catalog.dart';
 
 /// Une photo choisie dans le wizard (octets en mémoire, pas encore uploadée).
 class PickedPhoto {
-  PickedPhoto({required this.bytes, required this.name, required this.mime});
+  PickedPhoto({required this.bytes, required this.mime});
   final Uint8List bytes;
-  final String name;
   final String mime;
 
-  int get sizeMo => (bytes.lengthInBytes / (1024 * 1024)).ceil();
   bool get tropLourde => bytes.lengthInBytes >= 10 * 1024 * 1024;
 }
 
 /// État + soumission du wizard d'annonce (Zappart Pro web).
 ///
 /// Écrit un document `house` en `statut_validation: 'en_attente'` /
-/// `active: false` → l'annonce part en file de validation admin (mêmes règles
-/// Firestore que le wizard mobile de l'espace hôte). Le partenaire ne fixe pas
-/// les marges Zappart (`prixzap`/`prixpar`/`comission`) : l'admin les renseigne
-/// à la validation.
+/// `active: false` → file de validation admin (mêmes règles Firestore que le
+/// wizard mobile de l'espace hôte). Le partenaire ne fixe pas les marges Zappart
+/// (`prixzap`/`prixpar`/`comission`) : l'admin les renseigne à la validation.
+///
+/// Les photos sont **classées par pièce** (« Chambre 1 », « Salon »…) puis par
+/// commodité photographiable cochée — mêmes catégories que le mobile → le
+/// document `photos_categories` et l'ordre du carrousel `image` sont identiques.
 class AnnonceForm extends ChangeNotifier {
   AnnonceForm(this.partenaireRef);
 
   final DocumentReference<Map<String, dynamic>> partenaireRef;
 
   // ── Étape 1 — type & localisation ──
-  String locationtype = ''; // 'Journalier' | 'Mensuel'
+  String locationtype = '';
   String type = '';
-  String quartier = ''; // clé backend
+  String quartier = '';
   String zone = '';
   String cite = '';
   String adresse = '';
@@ -45,18 +46,18 @@ class AnnonceForm extends ChangeNotifier {
   int nbsalon = 1;
   int nbbain = 1;
   int nbcuisine = 1;
-  int capacite = 2; // journalier
+  int capacite = 2;
   int surface = 0;
-  int numbien = 0; // journalier
-  int heureArriveeMin = 14 * 60; // journalier — minutes depuis minuit
+  int numbien = 0;
+  int heureArriveeMin = 14 * 60;
   int heureDepartMin = 11 * 60;
   final Set<String> regles = {};
 
   // ── Étape 3 — commodités ──
   final Set<String> comodites = {};
 
-  // ── Étape 4 — photos ──
-  final List<PickedPhoto> photos = [];
+  // ── Étape 4 — photos par catégorie ──
+  final Map<String, List<PickedPhoto>> photos = {};
 
   // ── Étape 5 — concierge ──
   String conciergeNom = '';
@@ -64,11 +65,11 @@ class AnnonceForm extends ChangeNotifier {
 
   // ── Étape 6 — prix & description ──
   double prix = 0;
-  int cautionMois = 1; // mensuel
-  String chargesIncluses = 'a_part'; // mensuel
+  int cautionMois = 1;
+  String chargesIncluses = 'a_part';
   String chargesPrecision = '';
-  int bailMinMois = 12; // mensuel
-  bool journeeActive = false; // journalier
+  int bailMinMois = 12;
+  bool journeeActive = false;
   double prixJournee = 0;
   String description = '';
   String accroche = '';
@@ -81,7 +82,6 @@ class AnnonceForm extends ChangeNotifier {
   bool get autoriseCuisine => !kSansCuisine.contains(type);
   bool get chambreFigee => kUneChambre.contains(type);
 
-  /// Normalise les compteurs selon le type (à appeler à chaque changement).
   void appliquerContraintesType() {
     if (chambreFigee) nbchambre = 1;
     if (!autoriseSalon) nbsalon = 0;
@@ -90,7 +90,45 @@ class AnnonceForm extends ChangeNotifier {
 
   void touch() => notifyListeners();
 
-  // ── Validation par étape (bouton « Suivant ») ──
+  // ── Catégories photo ──
+  static List<String> _labels(String nom, int n) {
+    if (n <= 0) return const [];
+    if (n == 1) return [nom];
+    return [for (var i = 1; i <= n; i++) '$nom $i'];
+  }
+
+  /// Pièces à photographier — **obligatoires** (≥ 1 photo chacune).
+  List<String> get categoriesPieces => [
+        ..._labels('Chambre', nbchambre),
+        if (autoriseSalon) ..._labels('Salon', nbsalon),
+        if (autoriseCuisine) ..._labels('Cuisine', nbcuisine),
+        ..._labels('Salle de bain', nbbain),
+      ];
+
+  /// Commodités cochées qui reçoivent une catégorie photo — **optionnelles**.
+  List<String> get categoriesCommodites {
+    final out = <String>[];
+    for (final c in comodites) {
+      if (!comoditeAPhoto(c, journalier: isJournalier)) continue;
+      final l = amenityCanonique(c);
+      if (!out.contains(l)) out.add(l);
+    }
+    return out;
+  }
+
+  List<String> get categoriesPhotos =>
+      [...categoriesPieces, ...categoriesCommodites];
+
+  int photosDe(String cat) => photos[cat]?.length ?? 0;
+  int get totalPhotos => photos.values.fold(0, (a, l) => a + l.length);
+
+  List<String> get piecesSansPhoto =>
+      categoriesPieces.where((c) => photosDe(c) == 0).toList();
+
+  bool get toutesLesPhotosOk =>
+      photos.values.every((l) => l.every((p) => !p.tropLourde));
+
+  // ── Validation par étape ──
   bool get step1Ok =>
       locationtype.isNotEmpty &&
       type.isNotEmpty &&
@@ -107,8 +145,9 @@ class AnnonceForm extends ChangeNotifier {
     return true;
   }
 
-  bool get step3Ok => true; // commodités optionnelles
-  bool get step4Ok => photos.length >= 3 && photos.every((p) => !p.tropLourde);
+  bool get step3Ok => true;
+  bool get step4Ok =>
+      piecesSansPhoto.isEmpty && totalPhotos >= 3 && toutesLesPhotosOk;
   bool get step5Ok =>
       conciergeNom.trim().isNotEmpty && conciergeNum.trim().length >= 6;
 
@@ -172,24 +211,31 @@ class AnnonceForm extends ChangeNotifier {
         erreur = 'Session expirée. Reconnectez-vous.';
         return false;
       }
-      final col = FirebaseFirestore.instance.collection('house');
-      final doc = col.doc();
+      final doc = FirebaseFirestore.instance.collection('house').doc();
       final stamp = DateTime.now().microsecondsSinceEpoch;
 
-      // Upload des photos (séquentiel → ordre stable ; 1re = couverture).
-      final urls = <String>[];
-      for (var i = 0; i < photos.length; i++) {
-        final p = photos[i];
-        final ext = p.mime.contains('png') ? 'png' : 'jpg';
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('House/$uid/${doc.id}/img_${stamp}_$i.$ext');
-        await ref.putData(
-          p.bytes,
-          SettableMetadata(contentType: p.mime),
-        );
-        urls.add(await ref.getDownloadURL());
+      // Upload par catégorie (séquentiel → ordre stable).
+      final urlsParCat = <String, List<String>>{};
+      for (final entry in photos.entries) {
+        if (entry.value.isEmpty) continue;
+        final slug = _slug(entry.key);
+        final urls = <String>[];
+        for (var i = 0; i < entry.value.length; i++) {
+          final p = entry.value[i];
+          final ext = p.mime.contains('png') ? 'png' : 'jpg';
+          final ref = FirebaseStorage.instance.ref().child(
+              'House/$uid/${doc.id}/img_${slug}_${stamp}_$i.$ext');
+          await ref.putData(p.bytes, SettableMetadata(contentType: p.mime));
+          urls.add(await ref.getDownloadURL());
+        }
+        urlsParCat[entry.key] = urls;
       }
+      // Carrousel `image` : ordre déterministe (pièces puis commodités).
+      final ordre = [
+        ...categoriesPhotos,
+        ...urlsParCat.keys.where((k) => !categoriesPhotos.contains(k)),
+      ];
+      final image = [for (final c in ordre) ...?urlsParCat[c]];
 
       final data = <String, dynamic>{
         'description': description.trim(),
@@ -216,7 +262,8 @@ class AnnonceForm extends ChangeNotifier {
         'active': false,
         'statut_validation': 'en_attente',
         'motif_rejet': '',
-        'image': urls,
+        'image': image,
+        'photos_categories': urlsParCat,
         'Comodite': comodites.toList(),
         'soumis_le': FieldValue.serverTimestamp(),
         'created_at': FieldValue.serverTimestamp(),
@@ -249,5 +296,17 @@ class AnnonceForm extends ChangeNotifier {
       submitting = false;
       notifyListeners();
     }
+  }
+
+  static String _slug(String s) {
+    const accents = 'àâäéèêëîïôöùûüç';
+    const sans = 'aaaeeeeiioouuuc';
+    var out = s.toLowerCase();
+    for (var i = 0; i < accents.length; i++) {
+      out = out.replaceAll(accents[i], sans[i]);
+    }
+    return out
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
   }
 }

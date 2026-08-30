@@ -4,30 +4,42 @@
 /// valeurs que celles écrites dans `house` par le mobile.
 library;
 
-/// (libellé affiché, clé backend stockée dans `house.quartier`)
-const List<({String label, String key})> kQuartiers = [
-  (label: 'Ouakam', key: 'Ouakam'),
-  (label: 'Mamelles', key: 'Mamelles'),
-  (label: 'Almadies', key: 'Almadies'),
-  (label: 'Medina', key: 'Medina'),
-  (label: 'Sacré-coeur', key: 'Sacré-coeur'),
-  (label: 'Ngor', key: 'Ngor'),
-  (label: 'Grand-Dakar', key: 'Grand-Dakar'),
-  (label: 'Liberté', key: 'Liberté'),
-  (label: 'Ouest-foire', key: 'Ouest-foire'),
-  (label: 'Plateaux', key: 'Plateaux'),
-  (label: 'Fann', key: 'Fann'),
-  (label: 'Mermoz', key: 'Mermoz'),
-  (label: 'Scat-Urban', key: 'Scat-Urban'),
-  (label: 'HLM', key: 'HLM'),
-  (label: 'Mariste', key: 'Mariste'),
-  (label: 'Baobab', key: 'Baobab'),
-  (label: 'Keur Gorgui', key: 'Coeur gorgui'),
-  (label: 'Bel Aire', key: 'Bel Aire'),
-  (label: 'Castor', key: 'Castor'),
-  (label: 'Captage', key: 'Captage'),
-  (label: 'Keur Massar', key: 'Keur Massar'),
+/// (libellé affiché, clé backend stockée dans `house.quartier`, centre GPS
+/// approximatif — sert à cadrer la carte). Coords reprises de
+/// `quartiers_catalog.dart` (officiel).
+typedef QuartierInfo = ({String label, String key, double lat, double lng});
+
+const List<QuartierInfo> kQuartiers = [
+  (label: 'Ouakam', key: 'Ouakam', lat: 14.7206, lng: -17.4906),
+  (label: 'Mamelles', key: 'Mamelles', lat: 14.7297, lng: -17.4967),
+  (label: 'Almadies', key: 'Almadies', lat: 14.7442, lng: -17.5119),
+  (label: 'Medina', key: 'Medina', lat: 14.6797, lng: -17.4497),
+  (label: 'Sacré-coeur', key: 'Sacré-coeur', lat: 14.7047, lng: -17.4631),
+  (label: 'Ngor', key: 'Ngor', lat: 14.7494, lng: -17.5122),
+  (label: 'Grand-Dakar', key: 'Grand-Dakar', lat: 14.7006, lng: -17.4453),
+  (label: 'Liberté', key: 'Liberté', lat: 14.7139, lng: -17.4592),
+  (label: 'Ouest-foire', key: 'Ouest-foire', lat: 14.7439, lng: -17.4767),
+  (label: 'Plateaux', key: 'Plateaux', lat: 14.6686, lng: -17.4358),
+  (label: 'Fann', key: 'Fann', lat: 14.6903, lng: -17.4692),
+  (label: 'Mermoz', key: 'Mermoz', lat: 14.7069, lng: -17.4756),
+  (label: 'Scat-Urban', key: 'Scat-Urban', lat: 14.7181, lng: -17.4489),
+  (label: 'HLM', key: 'HLM', lat: 14.6953, lng: -17.4472),
+  (label: 'Mariste', key: 'Mariste', lat: 14.7358, lng: -17.4247),
+  (label: 'Baobab', key: 'Baobab', lat: 14.6892, lng: -17.4536),
+  (label: 'Keur Gorgui', key: 'Coeur gorgui', lat: 14.7100, lng: -17.4620),
+  (label: 'Bel Aire', key: 'Bel Aire', lat: 14.6772, lng: -17.4189),
+  (label: 'Castor', key: 'Castor', lat: 14.6931, lng: -17.4442),
+  (label: 'Captage', key: 'Captage', lat: 14.7338, lng: -17.4432),
+  (label: 'Keur Massar', key: 'Keur Massar', lat: 14.7853, lng: -17.3106),
 ];
+
+QuartierInfo? quartierInfoFor(String key) {
+  final k = key.trim().toLowerCase();
+  for (final q in kQuartiers) {
+    if (q.key.trim().toLowerCase() == k) return q;
+  }
+  return null;
+}
 
 const List<String> kTypesLogement = [
   'Appartement',
@@ -143,3 +155,49 @@ const Map<String, List<String>> kComoditesJournalierGroupes = {
 
 Map<String, List<String>> comoditesGroupes({required bool journalier}) =>
     journalier ? kComoditesJournalierGroupes : kComoditesMensuelGroupes;
+
+/// Libellés historiques en base → libellé canonique (repris de `amenity_icon.dart`).
+const Map<String, String> _alias = {
+  'WI-FI': 'Wifi',
+  'Gardien': 'Sécurité',
+  'Cuisine': 'Cuisine équipée',
+  'Salle de bain personelle': 'Salle de bain personnelle',
+  'Cuisine personelle': 'Cuisine personnelle',
+  'Espace pour secher le linge': 'Espace pour sécher le linge',
+};
+
+String amenityCanonique(String item) => _alias[item] ?? item;
+
+/// Commodités qui reçoivent une **photo dédiée** dans le wizard (sous-ensemble
+/// qui se photographie vraiment) — repris de `amenity_icon.dart`.
+const List<String> kComoditesPhotoMensuel = [
+  'Cuisine personnelle',
+  'Salle de bain personnelle',
+  'Entrée indépendante',
+  'Groupe électrogène',
+  "Château d'eau",
+  'Balcon',
+  'Espace pour sécher le linge',
+  'Parking',
+  'Ascenseur',
+  'Cour intérieure',
+];
+
+const List<String> kComoditesPhotoJournalier = [
+  'Cuisine équipée',
+  'Groupe électrogène',
+  "Château d'eau",
+  'Parking',
+  'Ascenseur',
+  'Piscine',
+  'Balcon',
+  'Terrasse / Jardin',
+  'Vue sur mer',
+  'Accès plage',
+];
+
+List<String> comoditesAvecPhoto({required bool journalier}) =>
+    journalier ? kComoditesPhotoJournalier : kComoditesPhotoMensuel;
+
+bool comoditeAPhoto(String item, {required bool journalier}) =>
+    comoditesAvecPhoto(journalier: journalier).contains(amenityCanonique(item));

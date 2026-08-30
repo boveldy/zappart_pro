@@ -4,7 +4,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/services/ai_description.dart';
 import '../../core/ui.dart';
+import '../../core/widgets/map_picker.dart';
 import '../../data/annonce_catalog.dart';
 import '../../data/annonce_form.dart';
 import '../../services/auth_service.dart';
@@ -41,7 +43,7 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
       return const PageScaffold(
         title: 'Ajouter une annonce',
         child: EmptyState(
-          'Votre compte n\'est pas un compte hôte — pas de parc immobilier.',
+          "Votre compte n'est pas un compte hôte — pas de parc immobilier.",
         ),
       );
     }
@@ -60,7 +62,7 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _TopBar(step: _step, total: _titres.length),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(_titres[_step], style: AppTheme.h1),
                     const SizedBox(height: 4),
                     Text('Étape ${_step + 1} sur ${_titres.length}',
@@ -115,15 +117,13 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text(
-            'Annonce envoyée pour validation. Elle sera en ligne dès son approbation.'),
+            "Annonce envoyée pour validation. Elle sera en ligne dès son approbation."),
       ));
       context.go('/parc');
     }
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Barre de progression + pied de page
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TopBar extends StatelessWidget {
@@ -177,7 +177,7 @@ class _Footer extends StatelessWidget {
         ),
         const Spacer(),
         ElevatedButton(
-          onPressed: submitting || (!last && !canNext) || (last && !canNext)
+          onPressed: submitting || !canNext
               ? null
               : (last ? onSubmit : onNext),
           child: submitting
@@ -193,9 +193,7 @@ class _Footer extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Petits composants de saisie
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Petits composants de saisie ─────────────────────────────────────────────
 
 class _Label extends StatelessWidget {
   const _Label(this.text, {this.hint});
@@ -215,7 +213,7 @@ class _Label extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(hint!,
                     style: const TextStyle(
-                        fontSize: 12, color: AppTheme.inkSoft)),
+                        fontSize: 12, color: AppTheme.inkSoft, height: 1.35)),
               ),
           ],
         ),
@@ -228,13 +226,11 @@ class _Field extends StatelessWidget {
     required this.onChanged,
     this.hintText,
     this.keyboardType,
-    this.maxLines = 1,
   });
   final String initial;
   final ValueChanged<String> onChanged;
   final String? hintText;
   final TextInputType? keyboardType;
-  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +238,6 @@ class _Field extends StatelessWidget {
       initialValue: initial,
       onChanged: onChanged,
       keyboardType: keyboardType,
-      maxLines: maxLines,
       style: const TextStyle(fontSize: 14),
       decoration: InputDecoration(hintText: hintText),
     );
@@ -254,12 +249,10 @@ class _ChoiceChips extends StatelessWidget {
     required this.options,
     required this.selected,
     required this.onTap,
-    this.multi = false,
   });
   final List<String> options;
   final Set<String> selected;
   final ValueChanged<String> onTap;
-  final bool multi;
 
   @override
   Widget build(BuildContext context) {
@@ -277,9 +270,8 @@ class _ChoiceChips extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected.contains(o) ? AppTheme.ink : Colors.white,
                 border: Border.all(
-                    color: selected.contains(o)
-                        ? AppTheme.ink
-                        : AppTheme.line),
+                    color:
+                        selected.contains(o) ? AppTheme.ink : AppTheme.line),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(o,
@@ -353,9 +345,7 @@ class _Stepper extends StatelessWidget {
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Étape 1 — Localisation
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Étape 1 — Localisation ─────────────────────────────────────────────────
 
 class _StepLocalisation extends StatelessWidget {
   const _StepLocalisation(this.f);
@@ -413,7 +403,8 @@ class _StepLocalisation extends StatelessWidget {
             },
           ),
           const SizedBox(height: 14),
-          const _Label('Zone / sous-quartier', hint: 'Optionnel — ex. Liberté 6'),
+          const _Label('Zone / sous-quartier',
+              hint: 'Optionnel — ex. Liberté 6'),
           _Field(
             initial: f.zone,
             onChanged: (v) {
@@ -442,109 +433,26 @@ class _StepLocalisation extends StatelessWidget {
             },
           ),
           const SizedBox(height: 18),
-          const _Label('Position GPS',
+          const _Label('Position exacte sur la carte',
               hint:
-                  'Collez le lien Google Maps du bien (partage → copier le lien). Obligatoire : la visite et le déménagement offert en dépendent.'),
-          _MapsLinkField(f),
+                  'Recherchez l\'adresse ou touchez la carte. Obligatoire : la visite et le déménagement offert en dépendent.'),
+          MapPicker(
+            lat: f.geoLat,
+            lng: f.geoLng,
+            quartierKey: f.quartier,
+            onChanged: (lat, lng) {
+              f.geoLat = lat;
+              f.geoLng = lng;
+              f.touch();
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-class _MapsLinkField extends StatefulWidget {
-  const _MapsLinkField(this.f);
-  final AnnonceForm f;
-  @override
-  State<_MapsLinkField> createState() => _MapsLinkFieldState();
-}
-
-class _MapsLinkFieldState extends State<_MapsLinkField> {
-  final _ctrl = TextEditingController();
-  String? _err;
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _apply() {
-    final r = AnnonceForm.parseLatLng(_ctrl.text);
-    setState(() {
-      if (r == null) {
-        _err = 'Lien non reconnu — collez un lien contenant les coordonnées.';
-      } else {
-        _err = null;
-        widget.f.geoLat = r.$1;
-        widget.f.geoLng = r.$2;
-      }
-    });
-    widget.f.touch();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final f = widget.f;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _ctrl,
-                style: const TextStyle(fontSize: 13.5),
-                decoration: const InputDecoration(
-                    hintText: 'https://maps.app.goo.gl/…  ou  lat, lng'),
-                onSubmitted: (_) => _apply(),
-              ),
-            ),
-            const SizedBox(width: 10),
-            OutlinedButton(
-              onPressed: _apply,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.ink,
-                side: const BorderSide(color: AppTheme.ink),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              child: const Text('Placer'),
-            ),
-          ],
-        ),
-        if (_err != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(_err!,
-                style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
-          ),
-        if (f.hasPosition)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle,
-                    size: 16, color: AppTheme.success),
-                const SizedBox(width: 6),
-                Text(
-                    'Position enregistrée : '
-                    '${f.geoLat!.toStringAsFixed(5)}, ${f.geoLng!.toStringAsFixed(5)}',
-                    style: const TextStyle(
-                        fontSize: 12.5, color: AppTheme.inkSoft)),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Étape 2 — Caractéristiques
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Étape 2 — Caractéristiques ─────────────────────────────────────────────
 
 class _StepCaracteristiques extends StatelessWidget {
   const _StepCaracteristiques(this.f);
@@ -604,7 +512,8 @@ class _StepCaracteristiques extends StatelessWidget {
           Row(children: [
             const Expanded(
                 child: Text('Nombre de pièces (chambres + salons)',
-                    style: TextStyle(fontSize: 13.5, color: AppTheme.inkSoft))),
+                    style:
+                        TextStyle(fontSize: 13.5, color: AppTheme.inkSoft))),
             Text('${f.nbpiece}',
                 style: const TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w700)),
@@ -699,7 +608,6 @@ class _StepCaracteristiques extends StatelessWidget {
             _ChoiceChips(
               options: kReglesMaison,
               selected: f.regles,
-              multi: true,
               onTap: (v) {
                 f.regles.contains(v) ? f.regles.remove(v) : f.regles.add(v);
                 f.touch();
@@ -712,9 +620,7 @@ class _StepCaracteristiques extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Étape 3 — Commodités
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Étape 3 — Commodités ───────────────────────────────────────────────────
 
 class _StepCommodites extends StatelessWidget {
   const _StepCommodites(this.f);
@@ -732,7 +638,6 @@ class _StepCommodites extends StatelessWidget {
             _ChoiceChips(
               options: g.value,
               selected: f.comodites,
-              multi: true,
               onTap: (v) {
                 f.comodites.contains(v)
                     ? f.comodites.remove(v)
@@ -742,15 +647,18 @@ class _StepCommodites extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
+          const Text(
+            'Les commodités cochées qui se photographient (cuisine, balcon, '
+            'piscine, groupe électrogène…) demanderont une photo à l\'étape suivante.',
+            style: TextStyle(fontSize: 12, color: AppTheme.inkSoft),
+          ),
         ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Étape 4 — Photos
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Étape 4 — Photos par pièce ─────────────────────────────────────────────
 
 class _StepPhotos extends StatefulWidget {
   const _StepPhotos(this.f);
@@ -760,17 +668,17 @@ class _StepPhotos extends StatefulWidget {
 }
 
 class _StepPhotosState extends State<_StepPhotos> {
-  bool _loading = false;
+  String? _loadingCat;
 
-  Future<void> _pick() async {
-    setState(() => _loading = true);
+  Future<void> _pick(String cat) async {
+    setState(() => _loadingCat = cat);
     try {
       final picked = await ImagePicker().pickMultiImage(imageQuality: 82);
+      final list = widget.f.photos.putIfAbsent(cat, () => []);
       for (final x in picked) {
         final bytes = await x.readAsBytes();
-        widget.f.photos.add(PickedPhoto(
+        list.add(PickedPhoto(
           bytes: bytes,
-          name: x.name,
           mime: x.mimeType ??
               (x.name.toLowerCase().endsWith('.png')
                   ? 'image/png'
@@ -779,81 +687,64 @@ class _StepPhotosState extends State<_StepPhotos> {
       }
       widget.f.touch();
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _loadingCat = null);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final f = widget.f;
+    final pieces = f.categoriesPieces;
+    final comm = f.categoriesCommodites;
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _Label('Photos du logement',
+          const _Label('Photos par pièce',
               hint:
-                  'Minimum 3. La première photo est la couverture. Max 10 Mo par image.'),
+                  'Au moins une photo par pièce (obligatoire), 3 photos minimum au total. Max 10 Mo par image.'),
           const SizedBox(height: 6),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (var i = 0; i < f.photos.length; i++)
-                _Thumb(
-                  photo: f.photos[i],
-                  cover: i == 0,
-                  onRemove: () {
-                    f.photos.removeAt(i);
-                    f.touch();
-                  },
-                  onCover: i == 0
-                      ? null
-                      : () {
-                          final p = f.photos.removeAt(i);
-                          f.photos.insert(0, p);
-                          f.touch();
-                        },
-                ),
-              InkWell(
-                onTap: _loading ? null : _pick,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 130,
-                  height: 130,
-                  decoration: BoxDecoration(
-                    color: AppTheme.panel,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.line),
-                  ),
-                  child: Center(
-                    child: _loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2))
-                        : const Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add_a_photo_outlined,
-                                  color: AppTheme.inkSoft),
-                              SizedBox(height: 6),
-                              Text('Ajouter',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.inkSoft)),
-                            ],
-                          ),
-                  ),
-                ),
+          for (final c in pieces)
+            _CatBlock(
+              titre: c,
+              obligatoire: true,
+              photos: f.photos[c] ?? const [],
+              loading: _loadingCat == c,
+              onAdd: () => _pick(c),
+              onRemove: (i) {
+                f.photos[c]!.removeAt(i);
+                f.touch();
+              },
+            ),
+          if (comm.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Divider(),
+            const SizedBox(height: 8),
+            const Text('Commodités',
+                style:
+                    TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            for (final c in comm)
+              _CatBlock(
+                titre: c,
+                obligatoire: false,
+                photos: f.photos[c] ?? const [],
+                loading: _loadingCat == c,
+                onAdd: () => _pick(c),
+                onRemove: (i) {
+                  f.photos[c]!.removeAt(i);
+                  f.touch();
+                },
               ),
-            ],
-          ),
-          if (f.photos.any((p) => p.tropLourde))
-            const Padding(
-              padding: EdgeInsets.only(top: 10),
-              child: Text('Une photo dépasse 10 Mo — retirez-la ou compressez-la.',
-                  style: TextStyle(color: AppTheme.danger, fontSize: 12)),
+          ],
+          if (f.piecesSansPhoto.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                  'Pièces sans photo : ${f.piecesSansPhoto.join(', ')}',
+                  style:
+                      const TextStyle(color: AppTheme.danger, fontSize: 12)),
             ),
         ],
       ),
@@ -861,23 +752,85 @@ class _StepPhotosState extends State<_StepPhotos> {
   }
 }
 
-class _Thumb extends StatelessWidget {
-  const _Thumb({
-    required this.photo,
-    required this.cover,
+class _CatBlock extends StatelessWidget {
+  const _CatBlock({
+    required this.titre,
+    required this.obligatoire,
+    required this.photos,
+    required this.loading,
+    required this.onAdd,
     required this.onRemove,
-    required this.onCover,
   });
+  final String titre;
+  final bool obligatoire;
+  final List<PickedPhoto> photos;
+  final bool loading;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Text(titre,
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(width: 6),
+            if (!obligatoire)
+              const Text('· optionnel',
+                  style: TextStyle(fontSize: 11, color: AppTheme.inkSoft)),
+          ]),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < photos.length; i++)
+                _Thumb(photo: photos[i], onRemove: () => onRemove(i)),
+              InkWell(
+                onTap: loading ? null : onAdd,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: AppTheme.panel,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.line),
+                  ),
+                  child: Center(
+                    child: loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.add_a_photo_outlined,
+                            size: 20, color: AppTheme.inkSoft),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Thumb extends StatelessWidget {
+  const _Thumb({required this.photo, required this.onRemove});
   final PickedPhoto photo;
-  final bool cover;
   final VoidCallback onRemove;
-  final VoidCallback? onCover;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 130,
-      height: 130,
+      width: 96,
+      height: 96,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -888,56 +841,25 @@ class _Thumb extends StatelessWidget {
           if (photo.tropLourde)
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.danger.withValues(alpha: 0.35),
+                color: AppTheme.danger.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
               child: const Text('> 10 Mo',
-                  style: TextStyle(color: Colors.white, fontSize: 12)),
+                  style: TextStyle(color: Colors.white, fontSize: 11)),
             ),
           Positioned(
-            top: 4,
-            right: 4,
+            top: 3,
+            right: 3,
             child: InkWell(
               onTap: onRemove,
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: const BoxDecoration(
                     color: Colors.black54, shape: BoxShape.circle),
-                child: const Icon(Icons.close, size: 15, color: Colors.white),
+                child: const Icon(Icons.close, size: 13, color: Colors.white),
               ),
             ),
-          ),
-          Positioned(
-            left: 4,
-            bottom: 4,
-            child: cover
-                ? Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: AppTheme.ink,
-                        borderRadius: BorderRadius.circular(999)),
-                    child: const Text('Couverture',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700)),
-                  )
-                : InkWell(
-                    onTap: onCover,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: AppTheme.line)),
-                      child: const Text('Définir couverture',
-                          style: TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
           ),
         ],
       ),
@@ -945,9 +867,7 @@ class _Thumb extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Étape 5 — Concierge
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Étape 5 — Concierge ────────────────────────────────────────────────────
 
 class _StepConcierge extends StatelessWidget {
   const _StepConcierge(this.f);
@@ -989,22 +909,84 @@ class _StepConcierge extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Étape 6 — Prix & description
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Étape 6 — Prix & description ───────────────────────────────────────────
 
-class _StepPrix extends StatelessWidget {
+class _StepPrix extends StatefulWidget {
   const _StepPrix(this.f);
   final AnnonceForm f;
+  @override
+  State<_StepPrix> createState() => _StepPrixState();
+}
+
+class _StepPrixState extends State<_StepPrix> {
+  final _descCtrl = TextEditingController();
+  final _accCtrl = TextEditingController();
+  bool _ai = false;
+  String? _aiMsg;
+
+  @override
+  void initState() {
+    super.initState();
+    _descCtrl.text = widget.f.description;
+    _accCtrl.text = widget.f.accroche;
+  }
+
+  @override
+  void dispose() {
+    _descCtrl.dispose();
+    _accCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _generer() async {
+    final f = widget.f;
+    setState(() {
+      _ai = true;
+      _aiMsg = null;
+    });
+    final res = await AiDescription.generer(
+      journalier: f.isJournalier,
+      type: f.type,
+      quartier: f.quartier,
+      cite: f.cite,
+      nbpiece: f.nbpiece,
+      nbchambre: f.nbchambre,
+      nbsalon: f.nbsalon,
+      nbbain: f.nbbain,
+      emplacement: f.emplacement,
+      comodites: f.comodites.toList(),
+      accrocheExistante: f.accroche,
+      descriptionExistante: f.description,
+    );
+    if (!mounted) return;
+    setState(() {
+      _ai = false;
+      if (res == null) {
+        _aiMsg = 'Génération indisponible — écrivez le texte à la main.';
+      } else {
+        if (res.description.isNotEmpty) {
+          f.description = res.description;
+          _descCtrl.text = res.description;
+        }
+        if (res.accroche.isNotEmpty) {
+          f.accroche = res.accroche;
+          _accCtrl.text = res.accroche;
+        }
+        f.touch();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final f = widget.f;
     final fmt = NumberFormat.decimalPattern('fr');
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Label(f.isJournalier ? 'Prix par nuit (FCFA)' : 'Loyer mensuel (FCFA)',
+          _Label(
+              f.isJournalier ? 'Prix par nuit (FCFA)' : 'Loyer mensuel (FCFA)',
               hint:
                   'Ce que vous touchez. Zappart ajoute sa marge par-dessus, sans toucher à ce montant.'),
           SizedBox(
@@ -1062,7 +1044,7 @@ class _StepPrix extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 18),
-            const _Label('Durée d\'engagement minimale'),
+            const _Label("Durée d'engagement minimale"),
             _ChoiceChips(
               options: [for (final m in kBailOptions) '$m mois'],
               selected: {'${f.bailMinMois} mois'},
@@ -1077,7 +1059,7 @@ class _StepPrix extends StatelessWidget {
             Row(children: [
               Switch(
                 value: f.journeeActive,
-                activeColor: AppTheme.ink,
+                activeThumbColor: AppTheme.ink,
                 onChanged: (v) {
                   f.journeeActive = v;
                   f.touch();
@@ -1085,7 +1067,8 @@ class _StepPrix extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               const Expanded(
-                child: Text('Proposer aussi la location à la journée (day-use)',
+                child: Text(
+                    'Proposer aussi la location à la journée (day-use)',
                     style: TextStyle(fontSize: 13)),
               ),
             ]),
@@ -1093,8 +1076,9 @@ class _StepPrix extends StatelessWidget {
               SizedBox(
                 width: 220,
                 child: _Field(
-                  initial:
-                      f.prixJournee == 0 ? '' : f.prixJournee.toStringAsFixed(0),
+                  initial: f.prixJournee == 0
+                      ? ''
+                      : f.prixJournee.toStringAsFixed(0),
                   keyboardType: TextInputType.number,
                   hintText: 'Prix journée (FCFA)',
                   onChanged: (v) {
@@ -1105,23 +1089,60 @@ class _StepPrix extends StatelessWidget {
                 ),
               ),
           ],
-          const SizedBox(height: 20),
-          const _Label('Description', hint: 'Au moins 20 caractères'),
-          _Field(
-            initial: f.description,
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              const Expanded(child: _Label('Description', hint: 'Au moins 20 caractères')),
+              OutlinedButton.icon(
+                onPressed: _ai ? null : _generer,
+                icon: _ai
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.auto_awesome, size: 16),
+                label: Text(_ai
+                    ? 'Génération…'
+                    : (f.description.isEmpty ? 'Générer avec l\'IA' : 'Améliorer avec l\'IA')),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.ink,
+                  side: const BorderSide(color: AppTheme.ink),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  textStyle: const TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          if (_aiMsg != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(_aiMsg!,
+                  style:
+                      const TextStyle(color: AppTheme.danger, fontSize: 12)),
+            ),
+          TextField(
+            controller: _descCtrl,
             maxLines: 5,
-            hintText:
-                'Décrivez le logement, le quartier, ce qui le rend agréable…',
+            style: const TextStyle(fontSize: 14),
+            decoration: const InputDecoration(
+                hintText:
+                    'Décrivez le logement, le quartier, ce qui le rend agréable…'),
             onChanged: (v) {
               f.description = v;
               f.touch();
             },
           ),
           const SizedBox(height: 14),
-          const _Label('Accroche', hint: 'Optionnel — une phrase courte'),
-          _Field(
-            initial: f.accroche,
-            hintText: 'Ex. Appartement lumineux à 5 min de la plage',
+          const _Label('Accroche', hint: 'Une phrase courte'),
+          TextField(
+            controller: _accCtrl,
+            style: const TextStyle(fontSize: 14),
+            decoration: const InputDecoration(
+                hintText: 'Ex. Appartement lumineux à 5 min de la plage'),
             onChanged: (v) {
               f.accroche = v;
               f.touch();
@@ -1133,26 +1154,24 @@ class _StepPrix extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Étape 7 — Récapitulatif
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Étape 7 — Récapitulatif ────────────────────────────────────────────────
 
-class _StepRecap extends StatefulWidget {
+class _StepRecap extends StatelessWidget {
   const _StepRecap(this.f);
   final AnnonceForm f;
-  @override
-  State<_StepRecap> createState() => _StepRecapState();
-}
 
-class _StepRecapState extends State<_StepRecap> {
   @override
   Widget build(BuildContext context) {
-    final f = widget.f;
     final fmt = NumberFormat.decimalPattern('fr');
-    final quartierLabel = kQuartiers
-        .firstWhere((q) => q.key == f.quartier,
-            orElse: () => (label: f.quartier, key: f.quartier))
-        .label;
+    final quartierLabel = quartierInfoFor(f.quartier)?.label ?? f.quartier;
+    PickedPhoto? cover;
+    for (final c in f.categoriesPhotos) {
+      final l = f.photos[c];
+      if (l != null && l.isNotEmpty) {
+        cover = l.first;
+        break;
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1161,13 +1180,12 @@ class _StepRecapState extends State<_StepRecap> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (f.photos.isNotEmpty)
+              if (cover != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Image.memory(f.photos.first.bytes,
-                        fit: BoxFit.cover),
+                    child: Image.memory(cover.bytes, fit: BoxFit.cover),
                   ),
                 ),
               const SizedBox(height: 14),
@@ -1179,15 +1197,15 @@ class _StepRecapState extends State<_StepRecap> {
               if (f.surface > 0) _row('Surface', '${f.surface} m²'),
               if (f.isJournalier) _row('Capacité', '${f.capacite} voyageurs'),
               if (f.isJournalier) _row('N° du bien', '#${f.numbien}'),
-              _row(
-                  f.isJournalier ? 'Prix / nuit' : 'Loyer',
+              _row(f.isJournalier ? 'Prix / nuit' : 'Loyer',
                   '${fmt.format(f.prix.round())} FCFA'),
               if (!f.isJournalier)
                 _row('Caution',
                     '${fmt.format(f.cautionCalculee.round())} FCFA (${f.cautionMois} mois)'),
               if (f.isJournalier && f.journeeActive)
-                _row('Prix journée', '${fmt.format(f.prixJournee.round())} FCFA'),
-              _row('Photos', '${f.photos.length}'),
+                _row('Prix journée',
+                    '${fmt.format(f.prixJournee.round())} FCFA'),
+              _row('Photos', '${f.totalPhotos}'),
               _row('Commodités', '${f.comodites.length} cochées'),
               _row('Concierge', '${f.conciergeNom} · ${f.conciergeNum}'),
             ],
@@ -1202,10 +1220,10 @@ class _StepRecapState extends State<_StepRecap> {
             border: Border.all(color: AppTheme.line),
           ),
           child: const Text(
-            'En soumettant, l\'annonce part en validation. Un membre de l\'équipe '
-            'Zappart la vérifie (photos, prix, cohérence) puis la met en ligne. '
-            'Vous serez notifié. Les marges et commissions Zappart sont ajoutées '
-            'à la validation.',
+            "En soumettant, l'annonce part en validation. Un membre de l'équipe "
+            "Zappart la vérifie (photos, prix, cohérence) puis la met en ligne. "
+            "Vous serez notifié. Les marges et commissions Zappart sont ajoutées "
+            "à la validation.",
             style: TextStyle(fontSize: 12.5, color: AppTheme.inkSoft),
           ),
         ),
