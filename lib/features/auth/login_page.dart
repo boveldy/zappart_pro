@@ -123,66 +123,51 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final wide = size.width >= 900;
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+
+    final form = _FormPanel(
+      formKey: _formKey,
+      email: _email,
+      password: _password,
+      obscure: _obscure,
+      busy: _busy,
+      error: _error,
+      onToggleObscure: () => setState(() => _obscure = !_obscure),
+      onSubmit: _submit,
+      onForgot: _forgotPassword,
+      onGoogle: () =>
+          _oauth(() => context.read<AuthService>().signInWithGoogle()),
+      onApple: () => _oauth(() => context.read<AuthService>().signInWithApple()),
+    );
 
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF3B4C5A), Color(0xFF2E6C8E), Color(0xFF4C93C4)],
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(28),
-            child: ConstrainedBox(
-              constraints:
-                  BoxConstraints(maxWidth: wide ? 980 : 460, minHeight: 0),
-              child: Material(
-                color: Colors.white,
-                elevation: 18,
-                shadowColor: Colors.black.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(24),
-                clipBehavior: Clip.antiAlias,
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (wide)
-                        Expanded(
-                          flex: 5,
-                          child: _HeroPanel(imageUrl: _heroImage),
-                        ),
-                      Expanded(
-                        flex: 6,
-                        child: _FormPanel(
-                          formKey: _formKey,
-                          email: _email,
-                          password: _password,
-                          obscure: _obscure,
-                          busy: _busy,
-                          error: _error,
-                          onToggleObscure: () =>
-                              setState(() => _obscure = !_obscure),
-                          onSubmit: _submit,
-                          onForgot: _forgotPassword,
-                          onGoogle: () => _oauth(() =>
-                              context.read<AuthService>().signInWithGoogle()),
-                          onApple: () => _oauth(() =>
-                              context.read<AuthService>().signInWithApple()),
-                        ),
+      backgroundColor: Colors.white,
+      body: wide
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 5, child: _HeroPanel(imageUrl: _heroImage)),
+                Expanded(
+                  flex: 6,
+                  child: Center(
+                    child: SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: form,
                       ),
-                    ],
+                    ),
                   ),
+                ),
+              ],
+            )
+          : Center(
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: form,
                 ),
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }
