@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/download.dart';
 import '../../core/ui.dart';
 import '../../data/revenus_repository.dart';
+import 'revenus_export.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -21,6 +22,68 @@ class RevenusPage extends StatefulWidget {
 }
 
 enum _Periode { j7, j30, j90, tout }
+
+enum _ExportFmt { csv, excel, pdf }
+
+class _ExportMenu extends StatelessWidget {
+  const _ExportMenu({required this.enabled, required this.onPick});
+  final bool enabled;
+  final ValueChanged<_ExportFmt> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_ExportFmt>(
+      enabled: enabled,
+      onSelected: onPick,
+      position: PopupMenuPosition.under,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+            value: _ExportFmt.pdf,
+            child: _Item(Icons.picture_as_pdf_outlined, 'PDF')),
+        PopupMenuItem(
+            value: _ExportFmt.excel,
+            child: _Item(Icons.grid_on_outlined, 'Excel (.xlsx)')),
+        PopupMenuItem(
+            value: _ExportFmt.csv,
+            child: _Item(Icons.description_outlined, 'CSV')),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppTheme.line),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: const [
+          Icon(Icons.download, size: 16, color: AppTheme.ink),
+          SizedBox(width: 8),
+          Text('Exporter',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.ink)),
+          Icon(Icons.keyboard_arrow_down_rounded,
+              size: 18, color: AppTheme.ink),
+        ]),
+      ),
+    );
+  }
+}
+
+class _Item extends StatelessWidget {
+  const _Item(this.icon, this.label);
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: AppTheme.ink),
+          const SizedBox(width: 10),
+          Text(label, style: const TextStyle(fontSize: 13)),
+        ],
+      );
+}
 
 extension on _Periode {
   String get label => switch (this) {
@@ -88,22 +151,10 @@ class _RevenusPageState extends State<RevenusPage> {
                   title: 'Revenus',
                   subtitle: 'Encaissements en ligne et retraits',
                   actions: [
-                    OutlinedButton.icon(
-                      onPressed: loading || err
-                          ? null
-                          : () => _exportCsv(ledger, retraits),
-                      icon: const Icon(Icons.download, size: 16),
-                      label: const Text('Exporter CSV'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.ink,
-                        side: const BorderSide(color: AppTheme.line),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        textStyle: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
+                    _ExportMenu(
+                      enabled: !loading && !err,
+                      onPick: (fmt) => _export(fmt, ledger ?? const [],
+                          retraits ?? const [], auth.displayName),
                     ),
                   ],
                   child: Column(
@@ -169,33 +220,30 @@ class _RevenusPageState extends State<RevenusPage> {
     return '•••• ${l.toUpperCase()}';
   }
 
-  void _exportCsv(List<LedgerEntry> ledger, List<RetraitEntry> retraits) {
-    final df = DateFormat('yyyy-MM-dd HH:mm');
-    final rows = <String>['Date;Sens;Libellé;Montant FCFA;Statut;Méthode;Référence'];
-    for (final l in ledger.where((l) => l.actif)) {
-      rows.add([
-        l.date == null ? '' : df.format(l.date!),
-        'Crédit',
-        l.typeLabel,
-        l.montant.round(),
-        l.enAttente ? 'En attente' : 'Disponible',
-        l.methode,
-        l.reference,
-      ].join(';'));
+  Future<void> _export(_ExportFmt fmt, List<LedgerEntry> ledger,
+      List<RetraitEntry> retraits, String nom) async {
+    final exp = RevenusExport(
+      ledger: ledger,
+      retraits: retraits,
+      periodeLabel: _periode.label,
+      partenaire: nom,
+    );
+    try {
+      switch (fmt) {
+        case _ExportFmt.csv:
+          downloadText(exp.csvName(), exp.csv());
+        case _ExportFmt.excel:
+          downloadBytes(exp.xlsxName(), exp.xlsx(),
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        case _ExportFmt.pdf:
+          downloadBytes(exp.pdfName(), await exp.pdf(), 'application/pdf');
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("L'export a échoué.")));
+      }
     }
-    for (final r in retraits) {
-      rows.add([
-        r.date == null ? '' : df.format(r.date!),
-        'Retrait',
-        'Retrait ${r.methodeLabel} ${r.numeroMasque}',
-        -r.montant,
-        r.badge.label,
-        r.methodeLabel,
-        r.preuve,
-      ].join(';'));
-    }
-    final stamp = DateFormat('yyyyMMdd').format(DateTime.now());
-    downloadText('zappart-revenus-$stamp.csv', rows.join('\r\n'));
   }
 
   Future<void> _retrait(RevenusRepository repo, int disponible) async {
