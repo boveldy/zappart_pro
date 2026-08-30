@@ -8,6 +8,7 @@ import '../features/not_partner_page.dart';
 import '../features/parc/fiche_bien_page.dart';
 import '../features/parc/nouvelle_annonce_page.dart';
 import '../features/parc/parc_page.dart';
+import '../features/revenus/revenus_page.dart';
 import '../features/placeholder_page.dart';
 import '../services/auth_service.dart';
 import '../shell/app_shell.dart';
@@ -73,11 +74,7 @@ GoRouter buildRouter(AuthService auth) {
           ),
           GoRoute(
             path: '/revenus',
-            builder: (_, __) => const PlaceholderPage(
-              title: 'Revenus',
-              subtitle: 'Solde, retraits et relevés',
-              plannedFor: 'J5',
-            ),
+            builder: (_, __) => const RevenusPage(),
           ),
           GoRoute(
             path: '/parametres',
