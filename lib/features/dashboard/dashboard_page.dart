@@ -16,11 +16,16 @@ class DashboardPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ref = context.watch<AuthService>().partenaireRef;
+    final auth = context.watch<AuthService>();
+    final ref = auth.partenaireRef;
     if (ref == null) {
       return const _Padded(child: _Empty(text: 'Fiche partenaire en cours de liaison…'));
     }
-    final repo = DashboardRepository(ref);
+    final repo = DashboardRepository(
+      ref,
+      estHote: auth.estHote,
+      estPrestataire: auth.estPrestataire,
+    );
 
     return StreamBuilder<List<HouseLite>>(
       stream: repo.houses(),
@@ -39,7 +44,11 @@ class DashboardPage extends StatelessWidget {
             if (!hSnap.hasData || !rSnap.hasData) {
               return const _Padded(child: _Skeleton());
             }
-            return _Body(houses: hSnap.data!, resas: rSnap.data!);
+            return _Body(
+              houses: hSnap.data!,
+              resas: rSnap.data!,
+              estHote: auth.estHote,
+            );
           },
         );
       },
@@ -48,9 +57,14 @@ class DashboardPage extends StatelessWidget {
 }
 
 class _Body extends StatelessWidget {
-  const _Body({required this.houses, required this.resas});
+  const _Body({
+    required this.houses,
+    required this.resas,
+    required this.estHote,
+  });
   final List<HouseLite> houses;
   final List<ResaLite> resas;
+  final bool estHote;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +104,13 @@ class _Body extends StatelessWidget {
         children: [
           _Header(demandes: demandes),
           const SizedBox(height: 20),
+          if (!estHote) ...[
+            const _InfoCard(
+              text: 'Votre compte est prestataire de services. Le suivi de vos '
+                  'missions arrivera bientôt dans un écran dédié.',
+            ),
+            const SizedBox(height: 16),
+          ],
           if (demandes > 0 || rejetees > 0) ...[
             _AlertBanner(
               text: demandes > 0
@@ -675,6 +696,23 @@ class _Empty extends StatelessWidget {
             textAlign: TextAlign.center,
             style: GoogleFonts.mavenPro(
                 fontSize: 13.5, color: AppTheme.inkSoft)),
+      );
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.text});
+  final String text;
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.panel,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(text,
+            style: GoogleFonts.mavenPro(
+                fontSize: 13, color: AppTheme.inkSoft)),
       );
 }
 

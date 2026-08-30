@@ -45,6 +45,9 @@ class AuthService extends ChangeNotifier {
     return raw is DocumentReference<Map<String, dynamic>> ? raw : null;
   }
 
+  bool get estHote => _userDoc?['est_hote'] == true;
+  bool get estPrestataire => _userDoc?['est_prestataire'] == true;
+
   String get displayName =>
       (_userDoc?['display_name'] as String?)?.trim().isNotEmpty == true
           ? _userDoc!['display_name'] as String

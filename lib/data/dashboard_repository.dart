@@ -4,24 +4,39 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Requêtes mono-champ + tri/filtre côté client (comme l'espace partenaire
 /// mobile) → aucun index composite requis.
 class DashboardRepository {
-  DashboardRepository(this.partenaireRef);
+  DashboardRepository(
+    this.partenaireRef, {
+    this.estHote = false,
+    this.estPrestataire = false,
+  });
 
   final DocumentReference<Map<String, dynamic>> partenaireRef;
+  final bool estHote;
+  final bool estPrestataire;
   final _db = FirebaseFirestore.instance;
 
-  Stream<List<HouseLite>> houses() => _db
-      .collection('house')
-      .where('partenaireId', isEqualTo: partenaireRef)
-      .limit(300)
-      .snapshots()
-      .map((s) => s.docs.map(HouseLite.fromDoc).toList());
+  Stream<List<HouseLite>> houses() {
+    if (!estHote) return Stream.value(const []);
+    return _db
+        .collection('house')
+        .where('partenaireId', isEqualTo: partenaireRef)
+        .limit(300)
+        .snapshots()
+        .map((s) => s.docs.map(HouseLite.fromDoc).toList());
+  }
 
-  Stream<List<ResaLite>> reservations() => _db
-      .collection('reservation')
-      .where('proprietaire_ref', isEqualTo: partenaireRef)
-      .limit(200)
-      .snapshots()
-      .map((s) => s.docs.map(ResaLite.fromDoc).toList());
+  /// Réservations sur les logements de l'hôte (`proprietaire_ref`).
+  /// Collection **`Reservation`** (R majuscule — cf. règles Firestore).
+  /// Le volet prestataire (missions) fera l'objet d'un écran dédié.
+  Stream<List<ResaLite>> reservations() {
+    if (!estHote) return Stream.value(const []);
+    return _db
+        .collection('Reservation')
+        .where('proprietaire_ref', isEqualTo: partenaireRef)
+        .limit(200)
+        .snapshots()
+        .map((s) => s.docs.map(ResaLite.fromDoc).toList());
+  }
 }
 
 class HouseLite {
