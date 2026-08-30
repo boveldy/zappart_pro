@@ -67,14 +67,7 @@ class _ParcPageState extends State<ParcPage> {
                   ' · ${all.where((h) => h.enLigne).length} en ligne',
           actions: [
             FilledButton(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'La création d\'annonce depuis le web arrive bientôt. '
-                    'En attendant, ajoutez un bien depuis l\'app Zappart.',
-                  ),
-                ),
-              ),
+              onPressed: () => context.go('/parc/nouveau'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.ink,
                 foregroundColor: Colors.white,

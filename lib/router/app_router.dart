@@ -5,6 +5,7 @@ import '../features/auth/login_page.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/not_partner_page.dart';
 import '../features/parc/fiche_bien_page.dart';
+import '../features/parc/nouvelle_annonce_page.dart';
 import '../features/parc/parc_page.dart';
 import '../features/placeholder_page.dart';
 import '../services/auth_service.dart';
@@ -46,6 +47,10 @@ GoRouter buildRouter(AuthService auth) {
             path: '/parc',
             builder: (_, __) => const ParcPage(),
             routes: [
+              GoRoute(
+                path: 'nouveau',
+                builder: (_, __) => const NouvelleAnnoncePage(),
+              ),
               GoRoute(
                 path: ':id',
                 builder: (_, s) =>
