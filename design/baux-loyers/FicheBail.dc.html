@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Maven Pro',system-ui,sans-serif;color:#111}
+    a{color:#C4836A;text-decoration:none}a:hover{color:#a56a52}
+    .muted{color:#6B6B6B}
+    .card{background:#fff;border:1px solid #ECECEC;border-radius:14px}
+    .lbl{font-size:10px;font-weight:700;letter-spacing:.5px;color:#6B6B6B;text-transform:uppercase}
+    .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700}
+    .pay{background:#E9EFE9;color:#2F6B45}.due{background:#F2EDE1;color:#7A5C1F}.late{background:#F3E8E6;color:#8A4033}.soon{background:#ECECEC;color:#5A5A5A}
+    .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #F1F1F1;font-size:13px}
+    .kv .k{color:#6B6B6B}
+    .act{display:flex;align-items:center;gap:10px;width:100%;height:42px;padding:0 14px;border:1px solid #ECECEC;border-radius:11px;font-size:13px;font-weight:600;background:#fff;cursor:pointer;text-align:left}
+    .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  </style>
+</helmet>
+
+<div style="height:100%;overflow:auto;background:#fff;font-family:'Maven Pro',system-ui,sans-serif;color:#111;padding:26px 34px">
+  <a style="font-size:12.5px;font-weight:600;color:#6B6B6B">← Baux</a>
+
+  <!-- header -->
+  <div style="display:flex;align-items:flex-start;gap:16px;margin:14px 0 22px">
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:10px">
+        <h1 style="font-size:22px;font-weight:800;margin:0">Awa Ndiaye</h1>
+        <span class="chip pay">Bail actif</span>
+      </div>
+      <div class="muted" style="font-size:13px;margin-top:3px">Sacré-cœur — Villa 3 · #12 · Propriétaire : M. Fall</div>
+      <div class="muted" style="font-size:12.5px;margin-top:1px">77 812 44 90 · awa.ndiaye@email.com</div>
+    </div>
+    <div style="text-align:right">
+      <div class="lbl">Loyer mensuel</div>
+      <div style="font-size:22px;font-weight:800">250 000 <span style="font-size:12px;color:#6B6B6B">FCFA</span></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:20px;align-items:flex-start">
+    <!-- left: conditions + échéancier -->
+    <div style="flex:1;min-width:0">
+      <div class="card" style="padding:18px;margin-bottom:18px">
+        <div class="lbl" style="margin-bottom:8px">Conditions du bail</div>
+        <div class="kv"><span class="k">Loyer</span><span style="font-weight:700">250 000 FCFA / mois</span></div>
+        <div class="kv"><span class="k">Charges</span><span>15 000 FCFA — forfait (eau + ordures)</span></div>
+        <div class="kv"><span class="k">Caution</span><span>500 000 FCFA (2 mois)</span></div>
+        <div class="kv"><span class="k">Date d'entrée</span><span>1ᵉʳ mars 2026</span></div>
+        <div class="kv"><span class="k">Durée</span><span>24 mois — échéance le 5 de chaque mois</span></div>
+        <div class="kv" style="border-bottom:none"><span class="k">Commission de gérance</span><span>8 % du loyer</span></div>
+      </div>
+
+      <div class="card" style="padding:18px">
+        <div style="display:flex;align-items:center;margin-bottom:12px">
+          <div class="lbl" style="flex:1">Échéancier 2026</div>
+          <div class="muted" style="font-size:11.5px">7 payés · 1 dû · 1 retard</div>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <!-- rows -->
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F1F1F1">
+            <div class="dot" style="background:#2F6B45"></div><div style="width:74px;font-size:13px;font-weight:600">Mars</div>
+            <div style="flex:1;font-size:12.5px;color:#6B6B6B">Payé le 4 mars · Wave</div>
+            <div style="font-size:13px;font-weight:700">265 000</div>
+            <a style="font-size:12px;font-weight:700;width:74px;text-align:right">Quittance</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F1F1F1">
+            <div class="dot" style="background:#2F6B45"></div><div style="width:74px;font-size:13px;font-weight:600">Avril</div>
+            <div style="flex:1;font-size:12.5px;color:#6B6B6B">Payé le 5 avr. · Espèces</div>
+            <div style="font-size:13px;font-weight:700">265 000</div>
+            <a style="font-size:12px;font-weight:700;width:74px;text-align:right">Quittance</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F1F1F1">
+            <div class="dot" style="background:#2F6B45"></div><div style="width:74px;font-size:13px;font-weight:600">Mai → Juil.</div>
+            <div style="flex:1;font-size:12.5px;color:#6B6B6B">Payés · virement</div>
+            <div style="font-size:13px;font-weight:700">795 000</div>
+            <a style="font-size:12px;font-weight:700;width:74px;text-align:right">Quittances</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F1F1F1;background:#FDF7F6;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px">
+            <div class="dot" style="background:#8A4033"></div><div style="width:74px;font-size:13px;font-weight:700">Août</div>
+            <div style="flex:1;font-size:12.5px;color:#8A4033">En retard — échéance 5 août · +28 j</div>
+            <div style="font-size:13px;font-weight:700">265 000</div>
+            <span class="chip late" style="width:74px;justify-content:center">Retard</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F1F1F1;background:#FCF8F0;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:8px">
+            <div class="dot" style="background:#7A5C1F"></div><div style="width:74px;font-size:13px;font-weight:700">Septembre</div>
+            <div style="flex:1;font-size:12.5px;color:#7A5C1F">Loyer dû — échéance le 5 sept. · dans 3 j</div>
+            <div style="font-size:13px;font-weight:700">265 000</div>
+            <span class="chip due" style="width:74px;justify-content:center">Dû</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F1F1F1">
+            <div class="dot" style="background:#D7D7D7"></div><div style="width:74px;font-size:13px;font-weight:600;color:#9a9a9a">Oct. → Déc.</div>
+            <div style="flex:1;font-size:12.5px;color:#9a9a9a">À venir</div>
+            <div style="font-size:13px;font-weight:700;color:#9a9a9a">795 000</div>
+            <div style="width:74px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- right: actions -->
+    <div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:14px">
+      <div class="card" style="padding:16px">
+        <div class="lbl" style="margin-bottom:10px">Actions</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="act" style="border-color:#111;background:#111;color:#fff"><svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>Marquer un loyer payé</button>
+          <button class="act"><svg width="16" height="16" fill="none" stroke="#111" stroke-width="1.7"><path d="M4 2h6l3 3v9H4z"/><path d="M10 2v3h3"/></svg>Générer la quittance</button>
+          <button class="act"><svg width="16" height="16" fill="none" stroke="#111" stroke-width="1.7"><path d="M2 3h12v9H6l-3 3z"/></svg>Relancer le locataire</button>
+          <button class="act" style="color:#8A4033;border-color:#E7D3CF"><svg width="16" height="16" fill="none" stroke="#8A4033" stroke-width="1.8"><path d="M4 4l8 8M12 4l-8 8"/></svg>Résilier le bail</button>
+        </div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div class="lbl" style="margin-bottom:8px">Reversement propriétaire</div>
+        <div class="kv"><span class="k">Encaissé (bail)</span><span style="font-weight:700">1 855 000</span></div>
+        <div class="kv"><span class="k">Commission 8 %</span><span>− 148 400</span></div>
+        <div class="kv" style="border-bottom:none"><span class="k">Net à reverser</span><span style="font-weight:800">1 706 600</span></div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div class="lbl" style="margin-bottom:6px">Locataire</div>
+        <div style="font-size:12.5px;color:#6B6B6B">Compte Zappart lié — voit ses quittances et peut payer en ligne.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

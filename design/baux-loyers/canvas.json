@@ -1,0 +1,25 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Zappart Pro (web)" },
+    { "id": "page-2", "name": "App locataire" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "page": "page-1", "x": 0, "y": 0, "w": 1280, "h": 880, "title": "Baux — liste" },
+    { "file": "FicheBail.dc.html", "page": "page-1", "x": 1380, "y": 0, "w": 1280, "h": 1140, "title": "Fiche bail" },
+    { "file": "MarquerPaye.dc.html", "page": "page-1", "x": 2760, "y": 0, "w": 640, "h": 700, "title": "Marquer un loyer payé" },
+    { "file": "NouveauBail.dc.html", "page": "page-1", "x": 0, "y": 1280, "w": 900, "h": 1080, "title": "Nouveau bail — conditions" },
+    { "file": "ParcBienPrive.dc.html", "page": "page-1", "x": 1000, "y": 1280, "w": 740, "h": 580, "title": "Parc — bien loué (privé)" },
+    { "file": "ReleveGerance.dc.html", "page": "page-1", "x": 1840, "y": 1280, "w": 1280, "h": 840, "title": "Relevé de gérance" },
+    { "file": "DashboardLoyers.dc.html", "page": "page-1", "x": 3220, "y": 1280, "w": 1280, "h": 540, "title": "Tableau de bord — bande Loyers" },
+
+    { "file": "MonLogement.dc.html", "page": "page-2", "x": 0, "y": 0, "w": 390, "h": 900, "title": "Mon logement" },
+    { "file": "MesQuittances.dc.html", "page": "page-2", "x": 490, "y": 0, "w": 390, "h": 840, "title": "Mes quittances" },
+    { "file": "Paiement.dc.html", "page": "page-2", "x": 980, "y": 0, "w": 390, "h": 780, "title": "Payer le loyer" },
+    { "file": "Invitation.dc.html", "page": "page-2", "x": 1470, "y": 0, "w": 390, "h": 780, "title": "Invitation locataire" }
+  ],
+  "annotations": [
+    { "id": "note-web", "page": "page-1", "x": 0, "y": -110, "w": 900, "text": "Surface 1 — Zappart Pro (logiciel de gestion, web desktop). Charte Zappart : noir / blanc / gris, Maven Pro, accent terracotta pour les liens. Reprend le rail + les cartes de l'app existante." },
+    { "id": "note-mobile", "page": "page-2", "x": 0, "y": -110, "w": 760, "text": "Surface 2 — app Zappart, vue du locataire. Minimale : son bail, ses quittances (PDF), payer le loyer. Le locataire hors Zappart reçoit sa quittance par WhatsApp/e-mail + une invitation à créer un compte." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

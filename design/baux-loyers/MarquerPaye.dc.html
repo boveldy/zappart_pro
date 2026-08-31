@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Maven Pro',system-ui,sans-serif;color:#111}
+    a{color:#C4836A;text-decoration:none}a:hover{color:#a56a52}
+    .muted{color:#6B6B6B}
+    .lbl{font-size:11px;font-weight:700;color:#111;display:block;margin-bottom:6px}
+    .field{height:42px;border:1px solid #ECECEC;border-radius:11px;display:flex;align-items:center;padding:0 13px;font-size:13px;width:100%}
+    .seg{flex:1;height:38px;border:1px solid #ECECEC;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;cursor:pointer}
+    .seg.on{background:#111;color:#fff;border-color:#111}
+  </style>
+</helmet>
+
+<div style="height:100%;background:rgba(17,17,17,.28);font-family:'Maven Pro',system-ui,sans-serif;color:#111;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="width:460px;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.22);padding:22px">
+    <div style="display:flex;align-items:center;margin-bottom:4px">
+      <div style="flex:1;font-size:16px;font-weight:800">Marquer un loyer payé</div>
+      <svg width="18" height="18" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M4 4l10 10M14 4L4 14"/></svg>
+    </div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:16px">Awa Ndiaye · Sacré-cœur — Villa 3</div>
+
+    <label class="lbl">Échéance concernée</label>
+    <div class="field" style="justify-content:space-between;margin-bottom:14px">Septembre 2026 — 265 000 FCFA <svg width="14" height="14" fill="none" stroke="#6B6B6B" stroke-width="1.8"><path d="M3 5l4 4 4-4"/></svg></div>
+
+    <label class="lbl">Moyen de paiement</label>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div class="seg on">Espèces</div><div class="seg">Virement</div><div class="seg">Wave</div><div class="seg">Orange M.</div><div class="seg">Chèque</div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-bottom:14px">
+      <div style="flex:1"><label class="lbl">Date de paiement</label><div class="field">3 sept. 2026</div></div>
+      <div style="flex:1"><label class="lbl">Montant reçu</label><div class="field" style="justify-content:space-between">265 000 <span class="muted" style="font-size:11px">FCFA</span></div></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#6B6B6B;margin-bottom:16px">
+      <div style="width:16px;height:16px;border:1px solid #CFCFCF;border-radius:5px"></div>
+      Paiement partiel — le reste dû reste affiché sur l'échéance
+    </div>
+
+    <div style="background:#F7F7F7;border:1px solid #ECECEC;border-radius:11px;padding:12px 14px;margin-bottom:16px">
+      <div class="lbl" style="color:#6B6B6B">Aperçu quittance</div>
+      <div style="font-size:12.5px;color:#444;line-height:1.5;margin-top:4px">Reçu de <b>Awa Ndiaye</b> la somme de <b>265 000 FCFA</b> pour le loyer de <b>septembre 2026</b> (loyer 250 000 + charges 15 000), logement Sacré-cœur — Villa 3.</div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button style="height:40px;padding:0 16px;border-radius:11px;border:none;background:none;font-size:13px;font-weight:600;color:#6B6B6B;cursor:pointer;font-family:inherit">Annuler</button>
+      <button style="height:40px;padding:0 18px;border-radius:11px;border:1px solid #111;background:#111;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Enregistrer &amp; éditer la quittance</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

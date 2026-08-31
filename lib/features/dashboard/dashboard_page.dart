@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../data/bail.dart';
 import '../../data/dashboard_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
@@ -273,6 +274,8 @@ class _Body extends StatelessWidget {
                   ),
           ),
           const SizedBox(height: 16),
+
+          const _LoyersBand(),
 
           // ── Argent ──────────────────────────────────────────────────
           LayoutBuilder(builder: (context, c) {
@@ -907,6 +910,121 @@ class _Skeleton extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [box(46), const SizedBox(height: 10), box(90), box(110), box(220), box(240)],
+    );
+  }
+}
+
+// ── Bande « Loyers » (module Baux) ─────────────────────────────────────────
+
+class _LoyersBand extends StatelessWidget {
+  const _LoyersBand();
+
+  static final _fmt = NumberFormat.decimalPattern('fr');
+  static String _f(num v) => '${_fmt.format(v.round())} FCFA';
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = context.read<AuthService>().partenaireRef;
+    if (ref == null) return const SizedBox.shrink();
+    final repo = BailRepository(ref);
+
+    return StreamBuilder<List<Echeance>>(
+      stream: repo.echeances(),
+      builder: (context, snap) {
+        final ech = snap.data ?? const <Echeance>[];
+        if (ech.isEmpty) return const SizedBox.shrink();
+        final now = DateTime.now();
+        final ceMois = ech.where((e) =>
+            e.dateEcheance != null &&
+            e.dateEcheance!.year == now.year &&
+            e.dateEcheance!.month == now.month);
+        final attendu = ceMois.fold<double>(0, (a, e) => a + e.montantDu);
+        final encaisse = ceMois
+            .where((e) => e.statutBrut == 'paye' || e.statutBrut == 'partiel')
+            .fold<double>(
+                0, (a, e) => a + (e.montantPaye > 0 ? e.montantPaye : e.montantDu));
+        final retards =
+            ech.where((e) => e.statutAffiche() == EStatut.retard).toList();
+        final retardTotal = retards.fold<double>(0, (a, e) => a + e.montantDu);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Expanded(
+                    child: Text('Loyers · ${DateFormat('MMMM', 'fr').format(now)}',
+                        style: GoogleFonts.mavenPro(
+                            fontSize: 14.5, fontWeight: FontWeight.w700)),
+                  ),
+                  InkWell(
+                    onTap: () => context.go('/baux'),
+                    child: Text('Ouvrir les baux →',
+                        style: GoogleFonts.mavenPro(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.terracotta)),
+                  ),
+                ]),
+                const SizedBox(height: 14),
+                LayoutBuilder(builder: (context, c) {
+                  final w = (c.maxWidth - 24) / 3;
+                  return Wrap(spacing: 12, runSpacing: 12, children: [
+                    _stat(w, 'Encaissé ce mois', _f(encaisse)),
+                    _stat(w, 'Attendu', _f(attendu)),
+                    _stat(w, 'En retard', _f(retardTotal),
+                        danger: retards.isNotEmpty,
+                        sub: retards.isEmpty
+                            ? null
+                            : '${retards.length} loyer${retards.length > 1 ? 's' : ''}'),
+                  ]);
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _stat(double w, String label, String value,
+      {bool danger = false, String? sub}) {
+    return Container(
+      width: w,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: danger ? const Color(0xFFFDF7F6) : AppTheme.panel,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: danger ? const Color(0xFFEDD9D4) : AppTheme.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: GoogleFonts.mavenPro(
+                  fontSize: 11,
+                  color: danger ? const Color(0xFF8A4033) : AppTheme.inkSoft)),
+          const SizedBox(height: 4),
+          Text(value,
+              style: GoogleFonts.mavenPro(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: danger ? const Color(0xFF8A4033) : AppTheme.ink)),
+          if (sub != null)
+            Text(sub,
+                style: GoogleFonts.mavenPro(
+                    fontSize: 11, color: const Color(0xFF8A4033))),
+        ],
+      ),
     );
   }
 }

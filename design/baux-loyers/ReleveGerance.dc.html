@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Maven Pro',system-ui,sans-serif;color:#111}
+    a{color:#C4836A;text-decoration:none}a:hover{color:#a56a52}
+    .muted{color:#6B6B6B}
+    .card{background:#fff;border:1px solid #ECECEC;border-radius:14px}
+    .lbl{font-size:10px;font-weight:700;letter-spacing:.5px;color:#6B6B6B;text-transform:uppercase}
+    .field{height:38px;border:1px solid #ECECEC;border-radius:10px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;gap:8px}
+    .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid #ECECEC;background:#fff;color:#111}
+    table{border-collapse:collapse;width:100%}
+    th{font-size:10px;font-weight:700;letter-spacing:.5px;color:#6B6B6B;text-transform:uppercase;text-align:left;padding:11px 14px;border-bottom:1px solid #ECECEC}
+    td{font-size:13px;padding:13px 14px;border-bottom:1px solid #F1F1F1}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+  </style>
+</helmet>
+
+<div style="height:100%;overflow:auto;background:#fff;font-family:'Maven Pro',system-ui,sans-serif;color:#111;padding:26px 34px">
+  <h1 style="font-size:22px;font-weight:800;margin:0">Relevé de gérance</h1>
+  <div class="muted" style="font-size:13px;margin-top:2px">Ce que vous reversez au propriétaire, à joindre à votre virement.</div>
+
+  <div style="display:flex;gap:10px;align-items:center;margin:18px 0 16px">
+    <div class="field">Propriétaire : <b>M. Fall</b> <svg width="13" height="13" fill="none" stroke="#6B6B6B" stroke-width="1.8"><path d="M2.5 4.5l4 4 4-4"/></svg></div>
+    <div class="field">Période : <b>3ᵉ trimestre 2026</b> <svg width="13" height="13" fill="none" stroke="#6B6B6B" stroke-width="1.8"><path d="M2.5 4.5l4 4 4-4"/></svg></div>
+    <div style="flex:1"></div>
+    <button class="btn"><svg width="15" height="15" fill="none" stroke="#111" stroke-width="1.7"><path d="M7.5 2v8M4 7l3.5 3.5L11 7M3 13h9"/></svg>Export PDF</button>
+    <button class="btn"><svg width="15" height="15" fill="none" stroke="#111" stroke-width="1.7"><rect x="2.5" y="2.5" width="10" height="10" rx="1.5"/><path d="M2.5 6h10M6 2.5v10"/></svg>Export Excel</button>
+  </div>
+
+  <div class="card" style="padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div>
+        <div style="font-size:15px;font-weight:800">Immobilière Teranga</div>
+        <div class="muted" style="font-size:11.5px">Relevé n° 2026-Q3-014 · Propriétaire M. Fall · juil. → sept. 2026</div>
+      </div>
+      <div style="text-align:right">
+        <div class="lbl">Net à reverser</div>
+        <div style="font-size:22px;font-weight:800">1 341 000 <span style="font-size:12px;color:#6B6B6B">FCFA</span></div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th style="width:34%">Bien / locataire</th>
+        <th class="num">Loyers encaissés</th>
+        <th class="num">Charges reversées</th>
+        <th class="num">Dépenses</th>
+        <th class="num">Commission 8 %</th>
+        <th class="num">Net propriétaire</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><b>Sacré-cœur — Villa 3</b><div class="muted" style="font-size:11.5px">Awa Ndiaye · 3 loyers</div></td>
+          <td class="num">750 000</td><td class="num">45 000</td>
+          <td class="num" style="color:#8A4033">− 65 000</td>
+          <td class="num">− 60 000</td>
+          <td class="num" style="font-weight:800">670 000</td>
+        </tr>
+        <tr>
+          <td><b>Ouakam — Studio 12</b><div class="muted" style="font-size:11.5px">Fatou Sarr · 3 loyers</div></td>
+          <td class="num">360 000</td><td class="num">30 000</td>
+          <td class="num">—</td>
+          <td class="num">− 28 800</td>
+          <td class="num" style="font-weight:800">361 200</td>
+        </tr>
+        <tr>
+          <td><b>Ngor — Appart. 2A</b><div class="muted" style="font-size:11.5px">Locataire — 2 loyers / 3</div></td>
+          <td class="num">400 000</td><td class="num">40 000</td>
+          <td class="num" style="color:#8A4033">− 15 000</td>
+          <td class="num">− 32 000</td>
+          <td class="num" style="font-weight:800">393 000</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="display:flex;justify-content:flex-end;gap:40px;padding:16px 14px 2px;font-size:13px">
+      <div class="muted">Total loyers <b style="color:#111">1 510 000</b></div>
+      <div class="muted">Dépenses <b style="color:#111">− 80 000</b></div>
+      <div class="muted">Commission <b style="color:#111">− 120 800</b></div>
+      <div style="font-weight:800">Net à reverser 1 341 000 FCFA</div>
+    </div>
+
+    <div style="margin-top:14px;padding:12px 14px;background:#F7F7F7;border-radius:10px;font-size:11.5px;color:#6B6B6B">
+      <b style="color:#111">Dépenses</b> : plomberie Villa 3 (65 000, facture jointe) · serrure Appart. 2A (15 000). Détail des quittances de loyer disponible en annexe du PDF.
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

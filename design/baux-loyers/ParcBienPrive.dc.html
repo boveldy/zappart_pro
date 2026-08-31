@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Maven Pro',system-ui,sans-serif;color:#111}
+    a{color:#C4836A;text-decoration:none}a:hover{color:#a56a52}
+    .muted{color:#6B6B6B}
+    .card{background:#fff;border:1px solid #ECECEC;border-radius:14px}
+    .lbl{font-size:10px;font-weight:700;letter-spacing:.5px;color:#6B6B6B;text-transform:uppercase}
+    .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;background:#ECECEC;color:#5A5A5A}
+  </style>
+</helmet>
+
+<div style="height:100%;overflow:auto;background:#fff;font-family:'Maven Pro',system-ui,sans-serif;color:#111;padding:26px 30px">
+  <a style="font-size:12.5px;font-weight:600;color:#6B6B6B">← Parc</a>
+  <div style="display:flex;gap:20px;margin-top:14px;align-items:flex-start">
+    <!-- left -->
+    <div style="flex:1">
+      <div class="card" style="overflow:hidden">
+        <div style="position:relative;height:180px;background:linear-gradient(135deg,#e9e9e9,#f4f4f4);display:flex;align-items:center;justify-content:center">
+          <svg width="34" height="34" fill="none" stroke="#b9b9b9" stroke-width="1.5"><path d="M4 14L17 3l13 11"/><path d="M7 12v14h20V12"/></svg>
+          <span class="chip" style="position:absolute;top:12px;left:12px">Loué · privé</span>
+        </div>
+        <div style="padding:16px">
+          <div style="font-size:16px;font-weight:800">Ouakam — Studio 12</div>
+          <div class="muted" style="font-size:12.5px;margin-top:2px">Mensuel · Studio · #12 · Propriétaire M. Fall</div>
+          <div style="font-size:18px;font-weight:800;margin-top:10px">120 000 <span style="font-size:11px;color:#6B6B6B">FCFA / mois</span></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <span style="padding:5px 10px;background:#F7F7F7;border-radius:999px;font-size:11px;font-weight:600">1 ch.</span>
+            <span style="padding:5px 10px;background:#F7F7F7;border-radius:999px;font-size:11px;font-weight:600">1 SdB</span>
+            <span style="padding:5px 10px;background:#F7F7F7;border-radius:999px;font-size:11px;font-weight:600">32 m²</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- right -->
+    <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:14px">
+      <div class="card" style="padding:16px">
+        <div class="lbl" style="margin-bottom:10px">Diffusion</div>
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">Sur la marketplace</div>
+            <div class="muted" style="font-size:11.5px;margin-top:2px">Désactivé — le bien est loué. Aucune annonce visible côté client.</div>
+          </div>
+          <div style="width:38px;height:22px;border-radius:999px;background:#E4E4E4;position:relative;flex-shrink:0">
+            <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;box-shadow:0 1px 3px rgba(0,0,0,.2)"></div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #F1F1F1;font-size:11.5px;color:#6B6B6B">Bail en cours jusqu'au <b style="color:#111">28 févr. 2028</b>. À la fin du bail, réactivez ce bouton pour republier.</div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div class="lbl" style="margin-bottom:8px">Bail</div>
+        <div style="font-size:13px;font-weight:700">Fatou Sarr</div>
+        <div class="muted" style="font-size:12px">Loyer à jour · prochaine échéance 5 sept.</div>
+        <a style="font-size:12px;font-weight:700;display:inline-block;margin-top:8px">Ouvrir la fiche bail →</a>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

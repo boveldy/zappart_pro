@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/login_page.dart';
+import '../features/baux/baux_page.dart';
+import '../features/baux/fiche_bail_page.dart';
+import '../features/baux/nouveau_bail_page.dart';
 import '../features/calendrier/calendrier_page.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/not_partner_page.dart';
@@ -59,6 +62,20 @@ GoRouter buildRouter(AuthService auth) {
                 path: ':id',
                 builder: (_, s) =>
                     FicheBienPage(id: s.pathParameters['id']!),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/baux',
+            builder: (_, __) => const BauxPage(),
+            routes: [
+              GoRoute(
+                path: 'nouveau',
+                builder: (_, __) => const NouveauBailPage(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (_, s) => FicheBailPage(id: s.pathParameters['id']!),
               ),
             ],
           ),

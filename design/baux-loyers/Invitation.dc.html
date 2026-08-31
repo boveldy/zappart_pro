@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Maven Pro',system-ui,sans-serif;color:#111;background:#fff}
+    a{color:#C4836A;text-decoration:none}a:hover{color:#a56a52}
+    .muted{color:#6B6B6B}
+    .kv{display:flex;justify-content:space-between;font-size:13px;padding:9px 0;border-bottom:1px solid #F1F1F1}
+  </style>
+</helmet>
+
+<div style="height:100%;overflow:auto;background:#fff;font-family:'Maven Pro',system-ui,sans-serif;color:#111;padding:30px 20px;display:flex;flex-direction:column">
+  <div style="width:46px;height:46px;border-radius:12px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;margin-bottom:20px">Z</div>
+
+  <div style="font-size:21px;font-weight:800;line-height:1.3;margin-bottom:6px">Immobilière Teranga vous a ajouté comme locataire</div>
+  <div class="muted" style="font-size:13px;margin-bottom:20px">Retrouvez votre bail, vos quittances et payez votre loyer directement ici.</div>
+
+  <div style="border:1px solid #ECECEC;border-radius:16px;padding:16px;margin-bottom:18px">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.4px;color:#6B6B6B;text-transform:uppercase;margin-bottom:6px">Votre bail</div>
+    <div class="kv"><span class="muted">Logement</span><span style="font-weight:600">Sacré-cœur — Villa 3</span></div>
+    <div class="kv"><span class="muted">Loyer</span><span style="font-weight:600">250 000 F + 15 000 charges</span></div>
+    <div class="kv"><span class="muted">Entrée</span><span style="font-weight:600">1ᵉʳ mars 2026</span></div>
+    <div class="kv" style="border-bottom:none"><span class="muted">Échéance</span><span style="font-weight:600">le 5 de chaque mois</span></div>
+  </div>
+
+  <div style="flex:1"></div>
+
+  <button style="width:100%;height:48px;border-radius:14px;border:none;background:#111;color:#fff;font-size:15px;font-weight:800;font-family:inherit;margin-bottom:10px">Voir mon logement</button>
+  <div class="muted" style="font-size:11.5px;text-align:center;line-height:1.5">Connecté au +221 77 812 44 90. Ce n'est pas vous ? <a>Signaler</a></div>
+</div>
+</x-dc>
+</body>
+</html>

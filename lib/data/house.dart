@@ -71,6 +71,7 @@ class House {
   final String? immeubleRefId;
   final DateTime? createdAt;
 
+  bool get prive => statutValidation == 'prive';
   bool get enLigne => active && statutValidation == 'validee';
   bool get horsLigne => !active && statutValidation == 'validee';
   bool get enValidation => statutValidation == 'en_attente';
@@ -80,6 +81,7 @@ class House {
 
   /// Libellé d'état affiché.
   ({String label, String tone}) get badge {
+    if (prive) return (label: 'Loué · privé', tone: 'muted');
     if (enLigne) return (label: 'En ligne', tone: 'ok');
     if (horsLigne) return (label: 'Hors ligne', tone: 'muted');
     if (enValidation) return (label: 'En validation', tone: 'wait');

@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Maven Pro',system-ui,sans-serif;color:#111;background:#fff}
+    a{color:#C4836A;text-decoration:none}a:hover{color:#a56a52}
+    .muted{color:#6B6B6B}
+    .kv{display:flex;justify-content:space-between;font-size:13px;padding:8px 0}
+  </style>
+</helmet>
+
+<div style="height:100%;overflow:auto;background:#fff;font-family:'Maven Pro',system-ui,sans-serif;color:#111;padding:22px 18px 30px">
+  <a style="font-size:12.5px;font-weight:600;color:#6B6B6B">← Annuler</a>
+  <div style="font-size:20px;font-weight:800;margin:12px 0 2px">Payer le loyer</div>
+  <div class="muted" style="font-size:12.5px;margin-bottom:18px">Septembre 2026 · Sacré-cœur — Villa 3</div>
+
+  <div style="border:1px solid #ECECEC;border-radius:16px;padding:16px;margin-bottom:18px">
+    <div class="kv"><span class="muted">Loyer</span><span>250 000 FCFA</span></div>
+    <div class="kv" style="border-bottom:1px solid #F1F1F1"><span class="muted">Charges (forfait)</span><span>15 000 FCFA</span></div>
+    <div class="kv" style="font-weight:800;font-size:15px;padding-top:12px"><span>Total à payer</span><span>265 000 FCFA</span></div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.4px;color:#6B6B6B;text-transform:uppercase;margin-bottom:8px">Moyen de paiement</div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:12px;border:1.5px solid #111;border-radius:14px;padding:14px">
+      <div style="width:34px;height:34px;border-radius:9px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">W</div>
+      <div style="flex:1"><div style="font-size:13.5px;font-weight:700">Wave</div><div class="muted" style="font-size:11.5px">77 812 44 90</div></div>
+      <div style="width:18px;height:18px;border-radius:50%;border:5px solid #111"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;border:1px solid #ECECEC;border-radius:14px;padding:14px">
+      <div style="width:34px;height:34px;border-radius:9px;background:#F7F7F7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">OM</div>
+      <div style="flex:1"><div style="font-size:13.5px;font-weight:700">Orange Money</div><div class="muted" style="font-size:11.5px">Ajouter un numéro</div></div>
+      <div style="width:18px;height:18px;border-radius:50%;border:1.5px solid #CFCFCF"></div>
+    </div>
+  </div>
+
+  <button style="width:100%;height:48px;border-radius:14px;border:none;background:#111;color:#fff;font-size:15px;font-weight:800;font-family:inherit">Payer 265 000 FCFA</button>
+  <div class="muted" style="font-size:11px;text-align:center;margin-top:10px;line-height:1.5">Paiement traité par Zappart. La quittance est disponible aussitôt le paiement confirmé.</div>
+</div>
+</x-dc>
+</body>
+</html>

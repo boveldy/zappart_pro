@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Maven Pro',system-ui,sans-serif;color:#111}
+    a{color:#C4836A;text-decoration:none}a:hover{color:#a56a52}
+    .muted{color:#6B6B6B}
+    .card{background:#fff;border:1px solid #ECECEC;border-radius:14px}
+    .lbl{font-size:11px;color:#6B6B6B}
+    .chip{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;background:#F3E8E6;color:#8A4033}
+  </style>
+</helmet>
+
+<div style="height:100%;overflow:auto;background:#fff;font-family:'Maven Pro',system-ui,sans-serif;color:#111;padding:26px 34px">
+  <div class="muted" style="font-size:12px;margin-bottom:14px">Tableau de bord · section</div>
+  <div style="display:flex;align-items:center;margin-bottom:14px">
+    <div style="flex:1;font-size:16px;font-weight:800">Loyers · septembre</div>
+    <a style="font-size:12.5px;font-weight:700">Ouvrir les baux →</a>
+  </div>
+
+  <div style="display:flex;gap:14px;margin-bottom:16px">
+    <div class="card" style="flex:1;padding:18px">
+      <div class="lbl">Encaissé ce mois</div>
+      <div style="font-size:24px;font-weight:800;margin-top:4px">3 180 000 <span style="font-size:12px;color:#6B6B6B">FCFA</span></div>
+      <div class="muted" style="font-size:11.5px;margin-top:2px">24 loyers sur 28</div>
+    </div>
+    <div class="card" style="flex:1;padding:18px">
+      <div class="lbl">Attendu</div>
+      <div style="font-size:24px;font-weight:800;margin-top:4px">3 645 000 <span style="font-size:12px;color:#6B6B6B">FCFA</span></div>
+      <div class="muted" style="font-size:11.5px;margin-top:2px">total des échéances du mois</div>
+    </div>
+    <div class="card" style="flex:1;padding:18px;border-color:#EDD9D4;background:#FDF7F6">
+      <div class="lbl" style="color:#8A4033">En retard</div>
+      <div style="font-size:24px;font-weight:800;margin-top:4px;color:#8A4033">465 000 <span style="font-size:12px">FCFA</span></div>
+      <div style="font-size:11.5px;margin-top:2px;color:#8A4033">3 loyers · le plus ancien +28 j</div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:8px 14px">
+    <div style="display:flex;align-items:center;padding:10px 0;font-size:12.5px">
+      <span class="chip">Retard</span>
+      <span style="margin-left:10px;flex:1"><b>Fatou Sarr</b> · Ouakam — Studio 12 · échéance 5 août</span>
+      <span style="font-weight:700;margin-right:14px">120 000</span>
+      <a style="font-weight:700">Relancer</a>
+    </div>
+    <div style="display:flex;align-items:center;padding:10px 0;font-size:12.5px;border-top:1px solid #F1F1F1">
+      <span class="chip">Retard</span>
+      <span style="margin-left:10px;flex:1"><b>Ousmane Faye</b> · Ngor — Studio 4 · échéance 3 sept.</span>
+      <span style="font-weight:700;margin-right:14px">150 000</span>
+      <a style="font-weight:700">Relancer</a>
+    </div>
+    <div style="display:flex;align-items:center;padding:10px 0;font-size:12.5px;border-top:1px solid #F1F1F1">
+      <span class="chip">Retard</span>
+      <span style="margin-left:10px;flex:1"><b>Awa Ndiaye</b> · Sacré-cœur — Villa 3 · échéance 5 août</span>
+      <span style="font-weight:700;margin-right:14px">265 000</span>
+      <a style="font-weight:700">Relancer</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

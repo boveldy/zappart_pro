@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800&display=swap">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Maven Pro',system-ui,sans-serif;color:#111;-webkit-font-smoothing:antialiased}
+    a{color:#C4836A;text-decoration:none} a:hover{color:#a56a52}
+    .muted{color:#6B6B6B}
+    .lbl{font-size:10px;font-weight:700;letter-spacing:.5px;color:#6B6B6B;text-transform:uppercase}
+    .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700}
+    .pay{background:#E9EFE9;color:#2F6B45}.due{background:#F2EDE1;color:#7A5C1F}.late{background:#F3E8E6;color:#8A4033}.soon{background:#ECECEC;color:#5A5A5A}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 18px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid #111;background:#111;color:#fff}
+    .btn.ghost{background:#fff;color:#111;border-color:#ECECEC}
+    table{border-collapse:collapse;width:100%}
+    th{font-size:10px;font-weight:700;letter-spacing:.5px;color:#6B6B6B;text-transform:uppercase;text-align:left;padding:11px 14px;border-bottom:1px solid #ECECEC}
+    td{font-size:13px;padding:13px 14px;border-bottom:1px solid #F1F1F1}
+    .rail-ic{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:10px}
+  </style>
+</helmet>
+
+<div style="display:flex;height:100%;background:#fff;font-family:'Maven Pro',system-ui,sans-serif;color:#111">
+  <!-- rail -->
+  <div style="width:64px;background:#111;display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:8px;flex-shrink:0">
+    <div style="width:28px;height:28px;border-radius:8px;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;margin-bottom:14px">Z</div>
+    <div class="rail-ic"><svg width="20" height="20" fill="none" stroke="#8b8b8b" stroke-width="1.6"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg></div>
+    <div class="rail-ic"><svg width="20" height="20" fill="none" stroke="#8b8b8b" stroke-width="1.6"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg></div>
+    <div class="rail-ic"><svg width="20" height="20" fill="none" stroke="#8b8b8b" stroke-width="1.6"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/></svg></div>
+    <div class="rail-ic" style="background:#fff"><svg width="20" height="20" fill="none" stroke="#111" stroke-width="1.7"><path d="M5 2h7l4 4v12H5z"/><path d="M12 2v5h4"/><path d="M8 11h6M8 14h6"/></svg></div>
+    <div class="rail-ic"><svg width="20" height="20" fill="none" stroke="#8b8b8b" stroke-width="1.6"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M13 10h2"/></svg></div>
+    <div class="rail-ic"><svg width="20" height="20" fill="none" stroke="#8b8b8b" stroke-width="1.6"><path d="M4 17V9M10 17V4M16 17v-6M2 17h16"/></svg></div>
+  </div>
+
+  <!-- main -->
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <div style="height:56px;border-bottom:1px solid #ECECEC;display:flex;align-items:center;padding:0 28px;gap:10px">
+      <div style="width:24px;height:24px;border-radius:6px;background:#F7F7F7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">IT</div>
+      <span style="font-size:13px;font-weight:600">Immobilière Teranga</span>
+      <span class="muted" style="font-size:12px">· Dakar</span>
+    </div>
+
+    <div style="flex:1;overflow:auto;padding:26px 28px">
+      <div style="display:flex;align-items:flex-start;margin-bottom:18px">
+        <div style="flex:1">
+          <h1 style="font-size:22px;font-weight:800;margin:0">Baux</h1>
+          <div class="muted" style="font-size:13px;margin-top:2px">28 baux actifs · 24 loyers encaissés ce mois</div>
+        </div>
+        <button class="btn">＋ Nouveau bail</button>
+      </div>
+
+      <!-- retard banner -->
+      <div style="display:flex;align-items:center;gap:12px;background:#FBF2F0;border:1px solid #EDD9D4;border-radius:12px;padding:13px 16px;margin-bottom:16px">
+        <div style="width:30px;height:30px;border-radius:50%;background:#8A4033;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px">3</div>
+        <div style="flex:1;font-size:13px"><b>3 loyers en retard</b> · 465 000 FCFA à recouvrer</div>
+        <a style="font-size:12.5px;font-weight:700">Voir les retards →</a>
+      </div>
+
+      <!-- filters -->
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <div style="height:38px;border:1px solid #ECECEC;border-radius:10px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;gap:8px">Statut : Tous <svg width="14" height="14" fill="none" stroke="#6B6B6B" stroke-width="1.8"><path d="M3 5l4 4 4-4"/></svg></div>
+        <div style="height:38px;border:1px solid #ECECEC;border-radius:10px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;gap:8px">Bien : Tous <svg width="14" height="14" fill="none" stroke="#6B6B6B" stroke-width="1.8"><path d="M3 5l4 4 4-4"/></svg></div>
+        <div style="height:38px;border:1px solid #ECECEC;border-radius:10px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;gap:8px">Propriétaire : Tous <svg width="14" height="14" fill="none" stroke="#6B6B6B" stroke-width="1.8"><path d="M3 5l4 4 4-4"/></svg></div>
+        <div style="flex:1"></div>
+        <div style="height:38px;width:230px;border:1px solid #ECECEC;border-radius:10px;display:flex;align-items:center;padding:0 12px;font-size:12.5px;color:#9a9a9a;gap:8px"><svg width="15" height="15" fill="none" stroke="#9a9a9a" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>Rechercher un locataire…</div>
+      </div>
+
+      <!-- table -->
+      <div style="border:1px solid #ECECEC;border-radius:14px;overflow:hidden">
+        <table>
+          <thead><tr>
+            <th style="width:26%">Locataire</th><th style="width:24%">Bien</th>
+            <th>Loyer / mois</th><th>Prochaine échéance</th><th>Statut</th><th></th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><b>Awa Ndiaye</b><div class="muted" style="font-size:11.5px">77 812 44 90</div></td>
+              <td>Sacré-cœur — Villa 3<div class="muted" style="font-size:11.5px">Pr. M. Fall</div></td>
+              <td style="font-weight:700">250 000</td>
+              <td>5 sept. · <span class="muted">dans 3 j</span></td>
+              <td><span class="chip due">Loyer dû</span></td>
+              <td style="text-align:right"><svg width="16" height="16" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg></td>
+            </tr>
+            <tr>
+              <td><b>Cheikh Diop</b><div class="muted" style="font-size:11.5px">78 220 10 05</div></td>
+              <td>Mermoz — Appart. B4<div class="muted" style="font-size:11.5px">Pr. SCI Baobab</div></td>
+              <td style="font-weight:700">180 000</td>
+              <td>1ᵉʳ sept.</td>
+              <td><span class="chip pay">À jour</span></td>
+              <td style="text-align:right"><svg width="16" height="16" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg></td>
+            </tr>
+            <tr style="background:#FDF7F6">
+              <td><b>Fatou Sarr</b><div class="muted" style="font-size:11.5px">76 555 88 21</div></td>
+              <td>Ouakam — Studio 12<div class="muted" style="font-size:11.5px">Pr. M. Fall</div></td>
+              <td style="font-weight:700">120 000</td>
+              <td>28 août · <span style="color:#8A4033">+8 j</span></td>
+              <td><span class="chip late">En retard</span></td>
+              <td style="text-align:right"><svg width="16" height="16" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg></td>
+            </tr>
+            <tr>
+              <td><b>Ibrahima Bâ</b><div class="muted" style="font-size:11.5px">70 900 33 47</div></td>
+              <td>Almadies — Villa 1<div class="muted" style="font-size:11.5px">Pr. Mme Thiam</div></td>
+              <td style="font-weight:700">450 000</td>
+              <td>10 sept. · <span class="muted">dans 8 j</span></td>
+              <td><span class="chip soon">À venir</span></td>
+              <td style="text-align:right"><svg width="16" height="16" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg></td>
+            </tr>
+            <tr>
+              <td><b>Ndèye Gueye</b><div class="muted" style="font-size:11.5px">77 401 62 18</div></td>
+              <td>Liberté 6 — Appart. 2C<div class="muted" style="font-size:11.5px">Pr. SCI Baobab</div></td>
+              <td style="font-weight:700">200 000</td>
+              <td>5 sept.</td>
+              <td><span class="chip pay">À jour</span></td>
+              <td style="text-align:right"><svg width="16" height="16" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg></td>
+            </tr>
+            <tr>
+              <td><b>Ousmane Faye</b><div class="muted" style="font-size:11.5px">78 143 77 02</div></td>
+              <td>Ngor — Studio 4<div class="muted" style="font-size:11.5px">Pr. Mme Thiam</div></td>
+              <td style="font-weight:700">150 000</td>
+              <td>3 sept. · <span style="color:#8A4033">+3 j</span></td>
+              <td><span class="chip late">En retard</span></td>
+              <td style="text-align:right"><svg width="16" height="16" fill="none" stroke="#9a9a9a" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:12px">6 baux sur 28 · page 1</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
