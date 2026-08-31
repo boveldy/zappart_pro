@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/ui.dart';
 import '../../data/house.dart';
+import '../../data/stats_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -144,6 +146,11 @@ class _ContentState extends State<_Content> {
           ),
           const SizedBox(height: 16),
           _InfoBlock(house: h),
+          const SizedBox(height: 16),
+          _PerformanceCard(
+            houseId: h.id,
+            partenaireRef: widget.repo.partenaireRef,
+          ),
         ],
       );
       final right = _ActionsPanel(
@@ -504,6 +511,135 @@ class _ActionsPanel extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PerformanceCard extends StatelessWidget {
+  const _PerformanceCard({required this.houseId, required this.partenaireRef});
+  final String houseId;
+  final DocumentReference<Map<String, dynamic>> partenaireRef;
+
+  static final _fmt = NumberFormat.decimalPattern('fr');
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = StatsRepository(partenaireRef);
+    return StreamBuilder<AnnonceStats?>(
+      stream: repo.statsFor(houseId),
+      builder: (context, statsSnap) {
+        return StreamBuilder<List<ResaStat>>(
+          stream: repo.reservationsFor(houseId),
+          builder: (context, resaSnap) {
+            final stats = statsSnap.data;
+            final resas = resaSnap.data ?? const <ResaStat>[];
+            final vues30 = stats?.vuesDepuis(30) ?? 0;
+            final vuesTot = stats?.vuesTotal ?? 0;
+            final nbResa = resas.where((r) => r.compteConversion).length;
+            final revenu = resas
+                .where((r) => r.aRapporte)
+                .fold<double>(0, (a, r) => a + r.prix);
+            final conv = vuesTot == 0
+                ? null
+                : (nbResa / vuesTot * 100);
+
+            return AppCard(
+              title: 'Performance',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 22,
+                    runSpacing: 14,
+                    children: [
+                      _stat('Vues · 30 j', '$vues30',
+                          sub: '$vuesTot au total'),
+                      _stat('Réservations', '$nbResa',
+                          sub: 'hors visites & annulées'),
+                      _stat('Revenu généré',
+                          '${_fmt.format(revenu.round())} FCFA'),
+                      _stat(
+                          'Conversion',
+                          conv == null ? '—' : '${conv.toStringAsFixed(1)} %',
+                          sub: 'réservations / vues'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text('30 DERNIERS JOURS',
+                      style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: AppTheme.inkSoft)),
+                  const SizedBox(height: 6),
+                  _Spark(values: stats?.serie(30) ?? List.filled(30, 0)),
+                  if (stats == null && statsSnap.connectionState ==
+                      ConnectionState.active) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Aucune vue enregistrée pour l\'instant. Le comptage a '
+                      'démarré récemment.',
+                      style: TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _stat(String label, String value, {String? sub}) => SizedBox(
+        width: 130,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 11.5, color: AppTheme.inkSoft)),
+            const SizedBox(height: 3),
+            Text(value,
+                style: const TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.w800)),
+            if (sub != null)
+              Text(sub,
+                  style: const TextStyle(
+                      fontSize: 10.5, color: AppTheme.inkSoft)),
+          ],
+        ),
+      );
+}
+
+class _Spark extends StatelessWidget {
+  const _Spark({required this.values});
+  final List<int> values;
+
+  @override
+  Widget build(BuildContext context) {
+    final max = values.isEmpty ? 1 : values.reduce((a, b) => a > b ? a : b);
+    final m = max == 0 ? 1 : max;
+    return SizedBox(
+      height: 46,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final v in values)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 1),
+                child: Container(
+                  height: (v / m * 46).clamp(2, 46).toDouble(),
+                  decoration: BoxDecoration(
+                    color: v == 0 ? AppTheme.line : AppTheme.ink,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
