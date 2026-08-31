@@ -84,6 +84,25 @@ class StatsRepository {
       .snapshots()
       .map(AnnonceStats.fromDoc);
 
+  /// Toutes les stats du parc du partenaire, indexées par houseId.
+  /// `where partenaire_ref ==` satisfait la règle Firestore (lecture hôte).
+  Stream<Map<String, AnnonceStats>> allStats() => _db
+      .collection('annonce_stats')
+      .where('partenaire_ref', isEqualTo: partenaireRef)
+      .limit(500)
+      .snapshots()
+      .map((s) => {
+            for (final d in s.docs)
+              d.id: AnnonceStats.fromDoc(d) ?? AnnonceStats(0, const {}),
+          });
+
+  Stream<List<ResaStat>> allReservations() => _db
+      .collection('Reservation')
+      .where('proprietaire_ref', isEqualTo: partenaireRef)
+      .limit(400)
+      .snapshots()
+      .map((s) => s.docs.map(ResaStat.fromDoc).toList());
+
   Stream<List<ResaStat>> reservationsFor(String houseId) => _db
       .collection('Reservation')
       .where('proprietaire_ref', isEqualTo: partenaireRef)

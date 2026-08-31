@@ -11,6 +11,7 @@ import '../features/parc/nouvelle_annonce_page.dart';
 import '../features/parc/parc_page.dart';
 import '../features/reservations/reservations_page.dart';
 import '../features/revenus/revenus_page.dart';
+import '../features/statistiques/statistiques_page.dart';
 import '../services/auth_service.dart';
 import '../shell/app_shell.dart';
 import '../theme/app_theme.dart';
@@ -72,6 +73,10 @@ GoRouter buildRouter(AuthService auth) {
           GoRoute(
             path: '/revenus',
             builder: (_, __) => const RevenusPage(),
+          ),
+          GoRoute(
+            path: '/statistiques',
+            builder: (_, __) => const StatistiquesPage(),
           ),
           GoRoute(
             path: '/parametres',
