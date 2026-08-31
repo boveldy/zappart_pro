@@ -754,9 +754,10 @@ class _Content extends StatelessWidget {
             Text(
               bail.locataireTelCanonique.isEmpty
                   ? 'Numéro non renseigné — le locataire ne pourra pas suivre son bail dans l\'app.'
-                  : 'Le locataire retrouve ce bail dans l\'app Zappart s\'il utilise le numéro '
-                      '${bail.locataireTel} (vérifié par SMS). Il y voit son échéancier et '
-                      'peut déclarer ses paiements${bail.encaissementMode == EncaissementMode.zappart ? ' ou payer en ligne' : ''}.',
+                  : 'Si le locataire a un compte Zappart avec le numéro ${bail.locataireTel}, '
+                      'il retrouve ce bail dans l\'app (menu « Ma location ») : échéancier, '
+                      'déclaration de paiement${bail.encaissementMode == EncaissementMode.zappart ? ', paiement en ligne' : ''}. '
+                      'Sinon, envoyez-lui la quittance par WhatsApp.',
               style: const TextStyle(fontSize: 12, color: AppTheme.inkSoft),
             ),
           ],
