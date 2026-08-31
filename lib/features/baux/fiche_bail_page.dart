@@ -128,11 +128,16 @@ class _Content extends StatelessWidget {
     return LayoutBuilder(builder: (context, c) {
       final wide = c.maxWidth >= 900;
       final pending = signalements.where((s) => s.enAttente).toList();
+      final termeProche = bail.arriveATerme(echeances);
       final left = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
           const SizedBox(height: 16),
+          if (termeProche) ...[
+            _termeBanner(context),
+            const SizedBox(height: 16),
+          ],
           if (pending.isNotEmpty) ...[
             _signalementsCard(context, pending),
             const SizedBox(height: 16),
@@ -485,6 +490,41 @@ class _Content extends StatelessWidget {
         ),
       );
 
+  Widget _termeBanner(BuildContext context) {
+    final fin = bail.finEffective(echeances);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2EDE1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE6DBC2)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.event_busy_outlined, size: 18, color: Color(0xFF7A5C1F)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            fin == null
+                ? 'Ce bail n\'a plus d\'échéance à venir.'
+                : 'Ce bail arrive à son terme le ${_df.format(fin)}. '
+                    'Prolongez-le (tacite reconduction) ou clôturez-le.',
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 10),
+        TextButton(
+          onPressed: () => _openProlonger(context),
+          style: TextButton.styleFrom(
+            foregroundColor: AppTheme.ink,
+            textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+          ),
+          child: const Text('Prolonger'),
+        ),
+      ]),
+    );
+  }
+
   // ── Signalements de paiement (locataire) ─────────────────────────────────
   Widget _signalementsCard(BuildContext context, List<SignalementLoyer> pending) {
     return AppCard(
@@ -671,6 +711,10 @@ class _Content extends StatelessWidget {
           _actBtn('Relevé de gérance', onTap: () => _openReleve(context)),
           const SizedBox(height: 8),
           _actBtn('Relancer le locataire', onTap: () => _relance(context)),
+          if (bail.actif) ...[
+            const SizedBox(height: 8),
+            _actBtn('Prolonger le bail', onTap: () => _openProlonger(context)),
+          ],
           const SizedBox(height: 8),
           _actBtn('Clôturer le bail',
               danger: true,
@@ -846,6 +890,17 @@ class _Content extends StatelessWidget {
         agence: agence,
       ),
     );
+  }
+
+  Future<void> _openProlonger(BuildContext context) async {
+    final done = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ProlongerDialog(bail: bail, echeances: echeances, repo: repo),
+    );
+    if (done == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bail prolongé — nouvelles échéances ajoutées.')));
+    }
   }
 
   Future<void> _openCloture(BuildContext context) async {
@@ -1524,6 +1579,7 @@ class _ClotureDialogState extends State<_ClotureDialog> {
   final _note = TextEditingController();
   bool _annulerFutures = true;
   bool _recu = true;
+  late bool _remettreEnLigne = widget.bail.houseRefId != null;
   bool _busy = false;
 
   static final _fmt = NumberFormat('#,###', 'fr_FR');
@@ -1569,6 +1625,9 @@ class _ClotureDialogState extends State<_ClotureDialog> {
         cautionNote: _note.text,
         echeancesAAnnuler: _aAnnuler,
       );
+      if (_remettreEnLigne && widget.bail.houseRefId != null) {
+        await widget.repo.setBienActif(widget.bail.houseRefId!, true);
+      }
       if (_recu && mounted) {
         await BailReleve.recuCaution(
           bail: widget.bail,
@@ -1758,6 +1817,12 @@ class _ClotureDialogState extends State<_ClotureDialog> {
                 'Générer le reçu de solde de caution (PDF)',
                 () => setState(() => _recu = !_recu),
               ),
+              if (widget.bail.houseRefId != null)
+                _check(
+                  _remettreEnLigne,
+                  'Remettre le bien en ligne sur le marketplace (il se libère)',
+                  () => setState(() => _remettreEnLigne = !_remettreEnLigne),
+                ),
             ],
           ),
         ),
@@ -1802,6 +1867,217 @@ class _ClotureDialogState extends State<_ClotureDialog> {
           ]),
         ),
       );
+
+  Widget _lbl(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Text(t,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+      );
+}
+
+// ── Dialogue « Prolonger le bail » ─────────────────────────────────────────
+
+class _ProlongerDialog extends StatefulWidget {
+  const _ProlongerDialog({
+    required this.bail,
+    required this.echeances,
+    required this.repo,
+  });
+  final Bail bail;
+  final List<Echeance> echeances;
+  final BailRepository repo;
+
+  @override
+  State<_ProlongerDialog> createState() => _ProlongerDialogState();
+}
+
+class _ProlongerDialogState extends State<_ProlongerDialog> {
+  int _mois = 12;
+  bool _reviser = false;
+  late final _loyer =
+      TextEditingController(text: widget.bail.loyer.round().toString());
+  late final _charges =
+      TextEditingController(text: widget.bail.charges.round().toString());
+  bool _busy = false;
+
+  static final _mf = DateFormat('MMMM yyyy', 'fr');
+
+  @override
+  void dispose() {
+    _loyer.dispose();
+    _charges.dispose();
+    super.dispose();
+  }
+
+  double? get _loyerV => _reviser
+      ? double.tryParse(_loyer.text.trim().replaceAll(' ', ''))
+      : null;
+  double? get _chargesV => _reviser && widget.bail.chargesMode == ChargesMode.forfait
+      ? double.tryParse(_charges.text.trim().replaceAll(' ', ''))
+      : null;
+
+  String get _apercu {
+    final der = widget.echeances
+        .map((e) => e.periode)
+        .fold<String>('0000-00', (a, b) => b.compareTo(a) > 0 ? b : a);
+    final p = der.split('-');
+    var y = int.tryParse(p.first) ?? DateTime.now().year;
+    var m = int.tryParse(p.last) ?? 1;
+    m++;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+    final debut = DateTime(y, m);
+    final fin = DateTime(y, m + _mois - 1);
+    return '${_cap(_mf.format(debut))} → ${_cap(_mf.format(fin))}';
+  }
+
+  static String _cap(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  Future<void> _go() async {
+    setState(() => _busy = true);
+    try {
+      await widget.repo.prolongerBail(
+        bail: widget.bail,
+        echeancesActuelles: widget.echeances,
+        moisEnPlus: _mois,
+        nouveauLoyer: _loyerV,
+        nouvellesCharges: _chargesV,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Prolongation impossible.')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      title: const Text('Prolonger le bail', style: TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${widget.bail.locataireNom} · ${widget.bail.bienTitre}',
+                style: const TextStyle(fontSize: 12.5, color: AppTheme.inkSoft)),
+            const SizedBox(height: 14),
+            _lbl('Durée ajoutée'),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final n in const [3, 6, 12, 24])
+                GestureDetector(
+                  onTap: () => setState(() => _mois = n),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _mois == n ? AppTheme.ink : Colors.white,
+                      border: Border.all(
+                          color: _mois == n ? AppTheme.ink : AppTheme.line),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text('$n mois',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                _mois == n ? Colors.white : AppTheme.ink)),
+                  ),
+                ),
+            ]),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.panel,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('$_mois échéances ajoutées : $_apercu',
+                  style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft)),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => setState(() => _reviser = !_reviser),
+              child: Row(children: [
+                Icon(
+                    _reviser
+                        ? Icons.check_box_rounded
+                        : Icons.check_box_outline_blank_rounded,
+                    size: 18,
+                    color: _reviser ? AppTheme.ink : AppTheme.inkSoft),
+                const SizedBox(width: 8),
+                const Text('Réviser le loyer pour la période ajoutée',
+                    style: TextStyle(fontSize: 12.5)),
+              ]),
+            ),
+            if (_reviser) ...[
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _lbl('Nouveau loyer (FCFA)'),
+                      TextField(
+                        controller: _loyer,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        style: const TextStyle(fontSize: 13),
+                        decoration: const InputDecoration(isDense: true),
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.bail.chargesMode == ChargesMode.forfait) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _lbl('Charges (FCFA)'),
+                        TextField(
+                          controller: _charges,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          style: const TextStyle(fontSize: 13),
+                          decoration: const InputDecoration(isDense: true),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ]),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context, false),
+            child: const Text('Annuler')),
+        ElevatedButton(
+          onPressed: _busy ? null : _go,
+          child: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : const Text('Prolonger'),
+        ),
+      ],
+    );
+  }
 
   Widget _lbl(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 5),

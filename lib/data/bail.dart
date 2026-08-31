@@ -113,6 +113,24 @@ class Bail {
   bool get actif => statut == 'actif';
   bool get termine => statut == 'termine' || statut == 'resilie';
 
+  /// Date de la dernière échéance non annulée (fin effective du bail).
+  DateTime? finEffective(List<Echeance> ech) {
+    final dates = ech
+        .where((e) => e.statutBrut != 'annule' && e.dateEcheance != null)
+        .map((e) => e.dateEcheance!);
+    return dates.isEmpty ? null : dates.reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+
+  /// Le bail actif arrive à son terme (dernière échéance dans moins de
+  /// `seuilJours`, ou déjà dépassée) → à prolonger ou clôturer.
+  bool arriveATerme(List<Echeance> ech, {int seuilJours = 45}) {
+    if (!actif) return false;
+    final fin = finEffective(ech);
+    if (fin == null) return false;
+    return DateTime.now()
+        .isAfter(fin.subtract(Duration(days: seuilJours)));
+  }
+
   String get finMotifLabel => switch (finMotif) {
         'Résiliation' => 'Résilié',
         'Départ anticipé' => 'Départ anticipé',
@@ -567,8 +585,70 @@ class BailRepository {
 
   Future<void> supprimerDepense(String id) => _depenses.doc(id).delete();
 
+  /// Retire / remet un bien sur le marketplace (bascule `active`). Best-effort :
+  /// échoue silencieusement pour un bien « privé » (jamais publié).
+  Future<void> setBienActif(String houseId, bool actif) async {
+    try {
+      await _db.collection('house').doc(houseId).update({'active': actif});
+    } catch (_) {/* bien privé ou déjà dans cet état */}
+  }
+
   Future<void> setEncaissementMode(String bailId, EncaissementMode mode) =>
       _baux.doc(bailId).update({'encaissement_mode': mode.name});
+
+  /// Prolonge un bail : ajoute `moisEnPlus` échéances à la suite de la dernière
+  /// période existante (loyer révisable), et met à jour `duree_mois`.
+  Future<void> prolongerBail({
+    required Bail bail,
+    required List<Echeance> echeancesActuelles,
+    required int moisEnPlus,
+    double? nouveauLoyer,
+    double? nouvellesCharges,
+  }) async {
+    final nb = moisEnPlus.clamp(1, 36);
+    final derniere = echeancesActuelles
+        .map((e) => e.periode)
+        .fold<String>('0000-00', (a, b) => b.compareTo(a) > 0 ? b : a);
+    final p = derniere.split('-');
+    var y = int.tryParse(p.first) ?? DateTime.now().year;
+    var m = int.tryParse(p.last) ?? DateTime.now().month;
+
+    final loyer = nouveauLoyer ?? bail.loyer;
+    final charges = nouvellesCharges ?? bail.charges;
+    final forfait = bail.chargesMode == ChargesMode.forfait;
+    final loyerCharges = forfait ? loyer + charges : loyer;
+
+    final batch = _db.batch();
+    for (var i = 0; i < nb; i++) {
+      m++;
+      if (m > 12) {
+        m = 1;
+        y++;
+      }
+      final d = DateTime(y, m, bail.jourEcheance.clamp(1, 28));
+      batch.set(_echeances.doc(), {
+        'partenaire_ref': partenaireRef,
+        'bail_ref': _baux.doc(bail.id),
+        if (bail.houseRefId != null)
+          'house_ref': _db.collection('house').doc(bail.houseRefId),
+        'locataire_tel_canonique': bail.locataireTelCanonique,
+        'periode': '$y-${m.toString().padLeft(2, '0')}',
+        'date_echeance': Timestamp.fromDate(d),
+        'montant_loyer': loyer,
+        'montant_charges': forfait ? charges : 0,
+        'montant_du': loyerCharges,
+        'statut': 'ouvert',
+        'montant_paye': 0,
+      });
+    }
+    batch.update(_baux.doc(bail.id), {
+      'duree_mois': bail.dureeMois + nb,
+      if (nouveauLoyer != null) 'loyer': nouveauLoyer,
+      if (nouvellesCharges != null && forfait) 'charges': nouvellesCharges,
+      'prolonge_le': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+  }
 
   // ── Signalements de paiement de loyer ────────────────────────────────────
 

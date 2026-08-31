@@ -30,6 +30,7 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
   // bien
   String? _houseId; // existant
   bool _bienPrive = false;
+  bool _retirerMarketplace = true;
   final _bienPriveTitre = TextEditingController();
   // conditions
   final _loyer = TextEditingController();
@@ -163,6 +164,29 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
                             ],
                             onChanged: (v) => setState(() => _houseId = v),
                           ),
+                          if (_houseId != null) ...[
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () => setState(() =>
+                                  _retirerMarketplace = !_retirerMarketplace),
+                              child: Row(children: [
+                                Icon(
+                                    _retirerMarketplace
+                                        ? Icons.check_box_rounded
+                                        : Icons.check_box_outline_blank_rounded,
+                                    size: 18,
+                                    color: _retirerMarketplace
+                                        ? AppTheme.ink
+                                        : AppTheme.inkSoft),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                      'Retirer ce bien du marketplace (il est loué)',
+                                      style: TextStyle(fontSize: 12)),
+                                ),
+                              ]),
+                            ),
+                          ],
                         ] else ...[
                           _lbl('Bien privé (hors marketplace)'),
                           _rawField(_bienPriveTitre,
@@ -388,6 +412,11 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
         houseRef = db.collection('house').doc(_houseId);
         final h = parc.firstWhere((h) => h.id == _houseId);
         bienTitre = h.titre;
+        if (_retirerMarketplace && h.active) {
+          try {
+            await houseRef.update({'active': false});
+          } catch (_) {/* non bloquant */}
+        }
       }
 
       final repo = BailRepository(partenaireRef);

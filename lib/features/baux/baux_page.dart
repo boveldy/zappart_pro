@@ -63,6 +63,9 @@ class _BauxPageState extends State<BauxPage> {
             }
             final all = bSnap.data;
             final actifs = (all ?? const <Bail>[]).where((b) => b.actif).length;
+            final aTerme = (all ?? const <Bail>[])
+                .where((b) => b.arriveATerme(parBail[b.id] ?? const []))
+                .length;
 
             return PageScaffold(
               title: 'Baux',
@@ -109,6 +112,10 @@ class _BauxPageState extends State<BauxPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _SignalementsBanner(repo: repo),
+                  if (aTerme > 0) ...[
+                    _TermeBanner(nb: aTerme),
+                    const SizedBox(height: 16),
+                  ],
                   if (retards.isNotEmpty) ...[
                     _RetardBanner(
                       nb: retards.length,
@@ -185,6 +192,7 @@ class _BauxPageState extends State<BauxPage> {
             _row(
               b: b,
               prochaine: _prochaine(parBail[b.id] ?? const []),
+              aTerme: b.arriveATerme(parBail[b.id] ?? const []),
             ),
         ],
       ),
@@ -229,13 +237,16 @@ class _BauxPageState extends State<BauxPage> {
                 color: AppTheme.inkSoft)),
       );
 
-  Widget _row({required Bail b, required Echeance? prochaine}) {
+  Widget _row(
+      {required Bail b, required Echeance? prochaine, bool aTerme = false}) {
     final st = prochaine?.statutAffiche();
     final badge = b.termine
         ? (label: b.finMotifLabel, tone: 'muted')
-        : st == null
-            ? (label: 'Soldé', tone: 'ok')
-            : eStatutBadge(st);
+        : aTerme
+            ? (label: 'À renouveler', tone: 'wait')
+            : st == null
+                ? (label: 'Soldé', tone: 'ok')
+                : eStatutBadge(st);
     final retard = prochaine?.joursDeRetard();
 
     return InkWell(
@@ -316,6 +327,35 @@ class _BauxPageState extends State<BauxPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TermeBanner extends StatelessWidget {
+  const _TermeBanner({required this.nb});
+  final int nb;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2EDE1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE6DBC2)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.event_busy_outlined, size: 18, color: Color(0xFF7A5C1F)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            '$nb bail${nb > 1 ? 's' : ''} arrive${nb > 1 ? 'nt' : ''} à son terme — '
+            'à prolonger ou clôturer',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ]),
     );
   }
 }
