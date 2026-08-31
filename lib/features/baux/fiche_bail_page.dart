@@ -39,12 +39,16 @@ class FicheBailPage extends StatelessWidget {
             stream: repo.echeancesDuBail(id),
             builder: (context, eSnap) => StreamBuilder<List<Depense>>(
               stream: repo.depensesDuBail(id),
-              builder: (context, dSnap) => _Content(
-                bail: bail,
-                echeances: eSnap.data ?? const [],
-                depenses: dSnap.data ?? const [],
-                repo: repo,
-                agence: auth.displayName,
+              builder: (context, dSnap) => StreamBuilder<List<SignalementLoyer>>(
+                stream: repo.signalementsDuBail(id),
+                builder: (context, sSnap) => _Content(
+                  bail: bail,
+                  echeances: eSnap.data ?? const [],
+                  depenses: dSnap.data ?? const [],
+                  signalements: sSnap.data ?? const [],
+                  repo: repo,
+                  agence: auth.displayName,
+                ),
               ),
             ),
           ),
@@ -86,12 +90,14 @@ class _Content extends StatelessWidget {
     required this.bail,
     required this.echeances,
     required this.depenses,
+    required this.signalements,
     required this.repo,
     required this.agence,
   });
   final Bail bail;
   final List<Echeance> echeances;
   final List<Depense> depenses;
+  final List<SignalementLoyer> signalements;
   final BailRepository repo;
   final String agence;
 
@@ -117,11 +123,16 @@ class _Content extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
       final wide = c.maxWidth >= 900;
+      final pending = signalements.where((s) => s.enAttente).toList();
       final left = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _header(),
           const SizedBox(height: 16),
+          if (pending.isNotEmpty) ...[
+            _signalementsCard(context, pending),
+            const SizedBox(height: 16),
+          ],
           _conditions(),
           const SizedBox(height: 16),
           _echeancier(context),
@@ -136,6 +147,8 @@ class _Content extends StatelessWidget {
             const SizedBox(height: 14),
           ],
           _actions(context),
+          const SizedBox(height: 14),
+          _encaissementCard(context),
           const SizedBox(height: 14),
           _reversement(),
           const SizedBox(height: 14),
@@ -439,6 +452,170 @@ class _Content extends StatelessWidget {
           ],
         ),
       );
+
+  // ── Signalements de paiement (locataire) ─────────────────────────────────
+  Widget _signalementsCard(BuildContext context, List<SignalementLoyer> pending) {
+    return AppCard(
+      title: 'Paiements déclarés par le locataire',
+      trailing: StatusChip('${pending.length}', tone: 'wait'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final s in pending) _signalRow(context, s),
+        ],
+      ),
+    );
+  }
+
+  Widget _signalRow(BuildContext context, SignalementLoyer s) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Color(0xFFF1F1F1))),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(
+              child: Text('${s.periodeLabel} · ${_fmt.format(s.montant.round())} FCFA',
+                  style: const TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w600)),
+            ),
+            Text(s.date == null ? '' : _df.format(s.date!),
+                style: const TextStyle(fontSize: 11, color: AppTheme.inkSoft)),
+          ]),
+          const SizedBox(height: 2),
+          Text(
+              '${s.canal == 'en_ligne' ? 'Payé en ligne' : 'Déclaré payé'}'
+              '${s.methode.isNotEmpty ? ' · ${s.methode}' : ''}',
+              style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft)),
+          const SizedBox(height: 8),
+          Row(children: [
+            InkWell(
+              onTap: () => _validerSignal(context, s),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                    color: AppTheme.ink,
+                    borderRadius: BorderRadius.circular(8)),
+                child: const Text('Confirmer la réception',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => repo.rejeterSignalement(s.id),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF8A4033),
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 0),
+                textStyle:
+                    const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+              ),
+              child: const Text('Rien reçu'),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _validerSignal(BuildContext context, SignalementLoyer s) async {
+    Echeance? cible;
+    for (final e in echeances) {
+      if (e.id == s.echeanceRefId || e.periode == s.periode) {
+        cible = e;
+        break;
+      }
+    }
+    if (cible == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Échéance introuvable pour cette période.')));
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Confirmer la réception du loyer',
+            style: TextStyle(fontSize: 16)),
+        content: Text(
+          '${cible!.periodeLabel} — ${_fmt.format((s.montant > 0 ? s.montant : cible.montantDu).round())} FCFA'
+          '${s.methode.isNotEmpty ? '\nMoyen déclaré : ${s.methode}' : ''}'
+          '\n\nL\'échéance sera marquée « payée » et la quittance sera disponible.',
+          style: const TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Annuler')),
+          FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Confirmer')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await repo.validerSignalement(
+        signalementId: s.id,
+        echeanceId: cible.id,
+        montant: s.montant > 0 ? s.montant : cible.montantDu,
+        date: s.date ?? DateTime.now(),
+        methode: s.methode.isEmpty
+            ? (s.canal == 'en_ligne' ? 'En ligne' : 'Mobile money')
+            : s.methode,
+      );
+    }
+  }
+
+  Widget _encaissementCard(BuildContext context) {
+    final m = bail.encaissementMode;
+    return AppCard(
+      title: 'Encaissement du loyer',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(encaissementModeLabel(m),
+              style: const TextStyle(
+                  fontSize: 12.5, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(
+            m == EncaissementMode.direct
+                ? 'Le locataire vous paie directement et déclare le paiement dans l\'app.'
+                : 'Le locataire paie en ligne ; Zappart vous reverse.',
+            style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
+          ),
+          if (bail.actif) ...[
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () => repo.setEncaissementMode(
+                bail.id,
+                m == EncaissementMode.direct
+                    ? EncaissementMode.zappart
+                    : EncaissementMode.direct,
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.ink,
+                side: const BorderSide(color: AppTheme.line),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+              child: Text(m == EncaissementMode.direct
+                  ? 'Passer au paiement en ligne'
+                  : 'Repasser en encaissement direct'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   // ── Actions ───────────────────────────────────────────────────────────────
   Widget _actions(BuildContext context) {

@@ -11,6 +11,28 @@ import 'package:intl/intl.dart';
 /// (`statutAffiche`) tant que le loyer n'est pas explicitement `paye` /
 /// `partiel` — pas besoin de cron pour l'affichage.
 
+/// Canonicalise un numéro sénégalais en E.164 (`+221XXXXXXXXX`).
+/// Sert de clé de liaison avec le `phone_number` (vérifié OTP) du locataire.
+String canonPhone(String raw) {
+  var d = raw.replaceAll(RegExp(r'[^0-9]'), '');
+  if (d.isEmpty) return '';
+  if (d.startsWith('00')) d = d.substring(2);
+  if (d.startsWith('221')) d = d.substring(3);
+  d = d.replaceFirst(RegExp(r'^0+'), '');
+  if (d.length == 9) return '+221$d';
+  return '+$d';
+}
+
+enum EncaissementMode { direct, zappart }
+
+String encaissementModeKey(EncaissementMode m) => m.name;
+EncaissementMode encaissementModeFrom(String s) =>
+    s == 'zappart' ? EncaissementMode.zappart : EncaissementMode.direct;
+String encaissementModeLabel(EncaissementMode m) => switch (m) {
+      EncaissementMode.direct => 'Encaissement direct par l\'agence',
+      EncaissementMode.zappart => 'Paiement en ligne via Zappart',
+    };
+
 enum ChargesMode { forfait, incluses, aPart }
 
 String chargesModeLabel(ChargesMode m) => switch (m) {
@@ -56,6 +78,8 @@ class Bail {
     this.cautionRestitue = 0,
     this.cautionRetenue = 0,
     this.cautionNote = '',
+    this.encaissementMode = EncaissementMode.direct,
+    this.locataireTelCanonique = '',
   });
 
   final String id;
@@ -81,6 +105,8 @@ class Bail {
   final double cautionRestitue;
   final double cautionRetenue;
   final String cautionNote;
+  final EncaissementMode encaissementMode;
+  final String locataireTelCanonique;
 
   double get loyerCharges =>
       chargesMode == ChargesMode.forfait ? loyer + charges : loyer;
@@ -145,6 +171,10 @@ class Bail {
       cautionRestitue: (m['caution_restitue'] as num?)?.toDouble() ?? 0,
       cautionRetenue: (m['caution_retenue'] as num?)?.toDouble() ?? 0,
       cautionNote: (m['caution_note'] as String?)?.trim() ?? '',
+      encaissementMode:
+          encaissementModeFrom((m['encaissement_mode'] as String?) ?? 'direct'),
+      locataireTelCanonique:
+          (m['locataire_tel_canonique'] as String?)?.trim() ?? '',
     );
   }
 }
@@ -310,6 +340,64 @@ class Echeance {
   }
 }
 
+// ── Signalements de paiement de loyer (côté locataire mobile) ──────────────
+
+class SignalementLoyer {
+  SignalementLoyer({
+    required this.id,
+    required this.bailRefId,
+    required this.echeanceRefId,
+    required this.periode,
+    required this.montant,
+    required this.methode,
+    required this.canal,
+    required this.statut,
+    required this.locataireNom,
+    required this.date,
+  });
+
+  final String id;
+  final String? bailRefId;
+  final String? echeanceRefId;
+  final String periode;
+  final double montant;
+  final String methode;
+  final String canal; // 'direct' | 'en_ligne'
+  final String statut; // 'signale' | 'valide' | 'rejete'
+  final String locataireNom;
+  final DateTime? date;
+
+  bool get enAttente => statut == 'signale';
+  String get periodeLabel {
+    final p = DateTime.tryParse('$periode-01');
+    return p == null
+        ? periode
+        : Echeance._cap(DateFormat('MMMM yyyy', 'fr').format(p));
+  }
+
+  static SignalementLoyer fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data();
+    return SignalementLoyer(
+      id: d.id,
+      bailRefId: m['bail_ref'] is DocumentReference
+          ? (m['bail_ref'] as DocumentReference).id
+          : null,
+      echeanceRefId: m['echeance_ref'] is DocumentReference
+          ? (m['echeance_ref'] as DocumentReference).id
+          : null,
+      periode: (m['periode'] as String?)?.trim() ?? '',
+      montant: (m['montant'] as num?)?.toDouble() ?? 0,
+      methode: (m['methode'] as String?)?.trim() ?? '',
+      canal: (m['canal'] as String?)?.trim() ?? 'direct',
+      statut: (m['statut'] as String?)?.trim() ?? 'signale',
+      locataireNom: (m['locataire_nom'] as String?)?.trim() ?? '',
+      date: m['date_signale'] is Timestamp
+          ? (m['date_signale'] as Timestamp).toDate()
+          : null,
+    );
+  }
+}
+
 class BailRepository {
   BailRepository(this.partenaireRef);
   final DocumentReference<Map<String, dynamic>> partenaireRef;
@@ -362,6 +450,7 @@ class BailRepository {
     required int jourEcheance,
     required String commissionMode,
     required double commissionValeur,
+    EncaissementMode encaissementMode = EncaissementMode.direct,
   }) async {
     final batch = _db.batch();
     final bailRef = _baux.doc();
@@ -372,6 +461,8 @@ class BailRepository {
       'bien_titre': bienTitre,
       'locataire_nom': locataireNom.trim(),
       'locataire_tel': locataireTel.trim(),
+      'locataire_tel_canonique': canonPhone(locataireTel),
+      'encaissement_mode': encaissementMode.name,
       'proprietaire_nom': proprietaireNom.trim(),
       'loyer': loyer,
       'charges': chargesMode == ChargesMode.forfait ? charges : 0,
@@ -466,6 +557,58 @@ class BailRepository {
       .map((s) => s.docs.map(Depense.fromDoc).toList());
 
   Future<void> supprimerDepense(String id) => _depenses.doc(id).delete();
+
+  Future<void> setEncaissementMode(String bailId, EncaissementMode mode) =>
+      _baux.doc(bailId).update({'encaissement_mode': mode.name});
+
+  // ── Signalements de paiement de loyer ────────────────────────────────────
+
+  CollectionReference<Map<String, dynamic>> get _signalements =>
+      _db.collection('paiements_loyers');
+
+  /// Tous les signalements en attente pour le partenaire (file de validation).
+  Stream<List<SignalementLoyer>> signalementsEnAttente() => _signalements
+      .where('partenaire_ref', isEqualTo: partenaireRef)
+      .limit(200)
+      .snapshots()
+      .map((s) => s.docs
+          .map(SignalementLoyer.fromDoc)
+          .where((x) => x.statut == 'signale')
+          .toList()
+        ..sort((a, b) =>
+            (b.date ?? DateTime(2000)).compareTo(a.date ?? DateTime(2000))));
+
+  Stream<List<SignalementLoyer>> signalementsDuBail(String bailId) =>
+      _signalements
+          .where('bail_ref', isEqualTo: _baux.doc(bailId))
+          .limit(100)
+          .snapshots()
+          .map((s) => s.docs.map(SignalementLoyer.fromDoc).toList()
+            ..sort((a, b) =>
+                (b.date ?? DateTime(2000)).compareTo(a.date ?? DateTime(2000))));
+
+  /// Rejette un signalement (le loyer n'a pas été reçu).
+  Future<void> rejeterSignalement(String id) =>
+      _signalements.doc(id).update({'statut': 'rejete'});
+
+  /// Valide un signalement : marque l'échéance payée + clôt le signalement.
+  Future<void> validerSignalement({
+    required String signalementId,
+    required String echeanceId,
+    required double montant,
+    required DateTime date,
+    required String methode,
+  }) async {
+    final batch = _db.batch();
+    batch.update(_echeances.doc(echeanceId), {
+      'statut': 'paye',
+      'montant_paye': montant,
+      'date_paiement': Timestamp.fromDate(date),
+      'methode': methode,
+    });
+    batch.update(_signalements.doc(signalementId), {'statut': 'valide'});
+    await batch.commit();
+  }
 
   // ── Clôture de bail + solde de caution ────────────────────────────────────
 

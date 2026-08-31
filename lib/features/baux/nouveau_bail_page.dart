@@ -41,6 +41,7 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
   DateTime _entree = DateTime(DateTime.now().year, DateTime.now().month, 1);
   String _commMode = 'pourcentage';
   final _commValeur = TextEditingController(text: '8');
+  EncaissementMode _encaissement = EncaissementMode.direct;
 
   bool _busy = false;
   final _fmt = NumberFormat('#,###', 'fr_FR');
@@ -279,6 +280,26 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
                                 num: true),
                           ),
                         ],
+                        const SizedBox(height: 16),
+                        _lbl('Encaissement du loyer'),
+                        Wrap(spacing: 8, runSpacing: 8, children: [
+                          _pill('Direct (agence)',
+                              _encaissement == EncaissementMode.direct,
+                              () => setState(
+                                  () => _encaissement = EncaissementMode.direct)),
+                          _pill('En ligne (Zappart)',
+                              _encaissement == EncaissementMode.zappart,
+                              () => setState(() =>
+                                  _encaissement = EncaissementMode.zappart)),
+                        ]),
+                        const SizedBox(height: 6),
+                        Text(
+                          _encaissement == EncaissementMode.direct
+                              ? 'Le locataire paie l\'agence directement (Wave / OM / espèces). L\'app lui affiche vos numéros et vous notifie quand il déclare avoir payé.'
+                              : 'Le locataire paie dans l\'app ; Zappart encaisse et vous reverse (loyer − commission). Nécessite l\'activation du paiement en ligne.',
+                          style: const TextStyle(
+                              fontSize: 11.5, color: AppTheme.inkSoft),
+                        ),
                       ],
                     ),
                   ),
@@ -386,6 +407,7 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
         commissionMode: _commMode,
         commissionValeur:
             double.tryParse(_commValeur.text.trim().replaceAll(' ', '')) ?? 0,
+        encaissementMode: _encaissement,
       );
       if (mounted) context.go('/baux/$id');
     } catch (e) {

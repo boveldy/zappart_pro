@@ -108,6 +108,7 @@ class _BauxPageState extends State<BauxPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _SignalementsBanner(repo: repo),
                   if (retards.isNotEmpty) ...[
                     _RetardBanner(
                       nb: retards.length,
@@ -315,6 +316,48 @@ class _BauxPageState extends State<BauxPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SignalementsBanner extends StatelessWidget {
+  const _SignalementsBanner({required this.repo});
+  final BailRepository repo;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<SignalementLoyer>>(
+      stream: repo.signalementsEnAttente(),
+      builder: (context, snap) {
+        final n = snap.data?.length ?? 0;
+        if (n == 0) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2EDE1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE6DBC2)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.notifications_active_outlined,
+                  size: 18, color: Color(0xFF7A5C1F)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '$n paiement${n > 1 ? 's' : ''} déclaré${n > 1 ? 's' : ''} '
+                  'par un locataire — à confirmer sur la fiche du bail',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ]),
+          ),
+        );
+      },
     );
   }
 }
