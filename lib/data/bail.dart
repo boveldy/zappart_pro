@@ -426,11 +426,17 @@ class BailRepository {
         ..sort((a, b) => (a.dateEcheance ?? DateTime(2100))
             .compareTo(b.dateEcheance ?? DateTime(2100))));
 
+  // ⚠️ Firestore refuse une requête `list` dont le filtre ne colle pas à la
+  // règle de sécurité (règle = `partenaire_ref == moi`). On filtre donc sur
+  // `partenaire_ref` (autorisé) puis on garde le bail voulu côté client.
   Stream<List<Echeance>> echeancesDuBail(String bailId) => _echeances
-      .where('bail_ref', isEqualTo: _baux.doc(bailId))
-      .limit(60)
+      .where('partenaire_ref', isEqualTo: partenaireRef)
+      .limit(1000)
       .snapshots()
-      .map((s) => s.docs.map(Echeance.fromDoc).toList()
+      .map((s) => s.docs
+          .map(Echeance.fromDoc)
+          .where((e) => e.bailRefId == bailId)
+          .toList()
         ..sort((a, b) => a.periode.compareTo(b.periode)));
 
   /// Crée le bail + ses échéances (batch unique).
@@ -521,10 +527,13 @@ class BailRepository {
   // ── Dépenses ──────────────────────────────────────────────────────────────
 
   Stream<List<Depense>> depensesDuBail(String bailId) => _depenses
-      .where('bail_ref', isEqualTo: _baux.doc(bailId))
-      .limit(200)
+      .where('partenaire_ref', isEqualTo: partenaireRef)
+      .limit(1000)
       .snapshots()
-      .map((s) => s.docs.map(Depense.fromDoc).toList()
+      .map((s) => s.docs
+          .map(Depense.fromDoc)
+          .where((d) => d.bailRefId == bailId)
+          .toList()
         ..sort((a, b) =>
             (b.date ?? DateTime(2000)).compareTo(a.date ?? DateTime(2000))));
 
@@ -580,10 +589,13 @@ class BailRepository {
 
   Stream<List<SignalementLoyer>> signalementsDuBail(String bailId) =>
       _signalements
-          .where('bail_ref', isEqualTo: _baux.doc(bailId))
-          .limit(100)
+          .where('partenaire_ref', isEqualTo: partenaireRef)
+          .limit(500)
           .snapshots()
-          .map((s) => s.docs.map(SignalementLoyer.fromDoc).toList()
+          .map((s) => s.docs
+              .map(SignalementLoyer.fromDoc)
+              .where((x) => x.bailRefId == bailId)
+              .toList()
             ..sort((a, b) =>
                 (b.date ?? DateTime(2000)).compareTo(a.date ?? DateTime(2000))));
 
