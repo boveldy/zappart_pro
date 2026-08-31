@@ -489,6 +489,7 @@ class BailRepository {
         'partenaire_ref': partenaireRef,
         'bail_ref': bailRef,
         if (houseRef != null) 'house_ref': houseRef,
+        'locataire_tel_canonique': canonPhone(locataireTel),
         'periode': per,
         'date_echeance': Timestamp.fromDate(d),
         'montant_loyer': loyer,
