@@ -50,6 +50,12 @@ class Bail {
     required this.commissionValeur,
     required this.statut,
     required this.bienTitre,
+    this.finDate,
+    this.finMotif = '',
+    this.cautionStatut = '',
+    this.cautionRestitue = 0,
+    this.cautionRetenue = 0,
+    this.cautionNote = '',
   });
 
   final String id;
@@ -69,11 +75,32 @@ class Bail {
   final double commissionValeur;
   final String statut; // 'actif' | 'termine' | 'resilie'
   final String bienTitre;
+  final DateTime? finDate;
+  final String finMotif;
+  final String cautionStatut; // '' | 'restituee' | 'retenue' | 'partielle'
+  final double cautionRestitue;
+  final double cautionRetenue;
+  final String cautionNote;
 
   double get loyerCharges =>
       chargesMode == ChargesMode.forfait ? loyer + charges : loyer;
   double get caution => cautionMois * loyer;
   bool get actif => statut == 'actif';
+  bool get termine => statut == 'termine' || statut == 'resilie';
+
+  String get finMotifLabel => switch (finMotif) {
+        'Résiliation' => 'Résilié',
+        'Départ anticipé' => 'Départ anticipé',
+        'Fin de bail' => 'Bail arrivé à terme',
+        _ => finMotif.isEmpty ? 'Clôturé' : finMotif,
+      };
+
+  String get cautionStatutLabel => switch (cautionStatut) {
+        'restituee' => 'Caution restituée intégralement',
+        'retenue' => 'Caution retenue intégralement',
+        'partielle' => 'Caution restituée partiellement',
+        _ => 'Caution non soldée',
+      };
 
   String get commissionLabel => switch (commissionMode) {
         'pourcentage' => '${commissionValeur.toStringAsFixed(
@@ -111,6 +138,81 @@ class Bail {
       commissionValeur: (m['commission_valeur'] as num?)?.toDouble() ?? 0,
       statut: (m['statut'] as String?)?.trim() ?? 'actif',
       bienTitre: (m['bien_titre'] as String?)?.trim() ?? '',
+      finDate:
+          m['fin_date'] is Timestamp ? (m['fin_date'] as Timestamp).toDate() : null,
+      finMotif: (m['fin_motif'] as String?)?.trim() ?? '',
+      cautionStatut: (m['caution_statut'] as String?)?.trim() ?? '',
+      cautionRestitue: (m['caution_restitue'] as num?)?.toDouble() ?? 0,
+      cautionRetenue: (m['caution_retenue'] as num?)?.toDouble() ?? 0,
+      cautionNote: (m['caution_note'] as String?)?.trim() ?? '',
+    );
+  }
+}
+
+// ── Dépenses & réparations imputées à un bail ──────────────────────────────
+
+enum DepenseCharge { proprietaire, agence, locataire }
+
+String depenseChargeLabel(DepenseCharge c) => switch (c) {
+      DepenseCharge.proprietaire => 'À la charge du propriétaire',
+      DepenseCharge.agence => 'À la charge de l\'agence',
+      DepenseCharge.locataire => 'Refacturée au locataire',
+    };
+
+String depenseChargeCourt(DepenseCharge c) => switch (c) {
+      DepenseCharge.proprietaire => 'Propriétaire',
+      DepenseCharge.agence => 'Agence',
+      DepenseCharge.locataire => 'Locataire',
+    };
+
+DepenseCharge depenseChargeFrom(String s) => DepenseCharge.values
+    .firstWhere((c) => c.name == s, orElse: () => DepenseCharge.proprietaire);
+
+const kDepenseCategories = <String>[
+  'Réparation',
+  'Entretien',
+  'Plomberie',
+  'Électricité',
+  'Peinture',
+  'Ménage',
+  'Taxe / impôt',
+  'Charges copropriété',
+  'Autre',
+];
+
+class Depense {
+  Depense({
+    required this.id,
+    required this.bailRefId,
+    required this.montant,
+    required this.categorie,
+    required this.libelle,
+    required this.charge,
+    required this.date,
+  });
+
+  final String id;
+  final String? bailRefId;
+  final double montant;
+  final String categorie;
+  final String libelle;
+  final DepenseCharge charge;
+  final DateTime? date;
+
+  bool get imputeeProprietaire => charge == DepenseCharge.proprietaire;
+
+  static Depense fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data();
+    return Depense(
+      id: d.id,
+      bailRefId: m['bail_ref'] is DocumentReference
+          ? (m['bail_ref'] as DocumentReference).id
+          : null,
+      montant: (m['montant'] as num?)?.toDouble() ?? 0,
+      categorie: (m['categorie'] as String?)?.trim() ?? 'Autre',
+      libelle: (m['libelle'] as String?)?.trim() ?? '',
+      charge: depenseChargeFrom((m['charge'] as String?) ?? 'proprietaire'),
+      date: m['date'] is Timestamp ? (m['date'] as Timestamp).toDate() : null,
     );
   }
 }
@@ -216,6 +318,8 @@ class BailRepository {
   CollectionReference<Map<String, dynamic>> get _baux => _db.collection('baux');
   CollectionReference<Map<String, dynamic>> get _echeances =>
       _db.collection('echeances');
+  CollectionReference<Map<String, dynamic>> get _depenses =>
+      _db.collection('depenses');
 
   Stream<List<Bail>> baux() => _baux
       .where('partenaire_ref', isEqualTo: partenaireRef)
@@ -323,6 +427,71 @@ class BailRepository {
         'methode': methode,
       });
 
-  Future<void> resilier(String bailId) =>
-      _baux.doc(bailId).update({'statut': 'resilie'});
+  // ── Dépenses ──────────────────────────────────────────────────────────────
+
+  Stream<List<Depense>> depensesDuBail(String bailId) => _depenses
+      .where('bail_ref', isEqualTo: _baux.doc(bailId))
+      .limit(200)
+      .snapshots()
+      .map((s) => s.docs.map(Depense.fromDoc).toList()
+        ..sort((a, b) =>
+            (b.date ?? DateTime(2000)).compareTo(a.date ?? DateTime(2000))));
+
+  Future<void> ajouterDepense({
+    required String bailId,
+    DocumentReference<Map<String, dynamic>>? houseRef,
+    required double montant,
+    required String categorie,
+    required String libelle,
+    required DepenseCharge charge,
+    required DateTime date,
+  }) =>
+      _depenses.add({
+        'partenaire_ref': partenaireRef,
+        'bail_ref': _baux.doc(bailId),
+        if (houseRef != null) 'house_ref': houseRef,
+        'montant': montant,
+        'categorie': categorie,
+        'libelle': libelle.trim(),
+        'charge': charge.name,
+        'date': Timestamp.fromDate(date),
+        'created_at': FieldValue.serverTimestamp(),
+      });
+
+  Future<void> supprimerDepense(String id) => _depenses.doc(id).delete();
+
+  // ── Clôture de bail + solde de caution ────────────────────────────────────
+
+  /// Termine un bail : pose le statut, la date de fin, le sort de la caution,
+  /// et annule les échéances postérieures listées (batch unique).
+  Future<void> cloturerBail({
+    required String bailId,
+    required DateTime finDate,
+    required String motif,
+    required double cautionRestitue,
+    required double cautionRetenue,
+    required String cautionNote,
+    required List<String> echeancesAAnnuler,
+  }) async {
+    final batch = _db.batch();
+    final resilie = motif == 'Résiliation' || motif == 'Départ anticipé';
+    batch.update(_baux.doc(bailId), {
+      'statut': resilie ? 'resilie' : 'termine',
+      'fin_date': Timestamp.fromDate(finDate),
+      'fin_motif': motif,
+      'caution_statut': cautionRetenue <= 0
+          ? 'restituee'
+          : cautionRestitue <= 0
+              ? 'retenue'
+              : 'partielle',
+      'caution_restitue': cautionRestitue,
+      'caution_retenue': cautionRetenue,
+      'caution_note': cautionNote.trim(),
+      'cloture_le': FieldValue.serverTimestamp(),
+    });
+    for (final id in echeancesAAnnuler) {
+      batch.update(_echeances.doc(id), {'statut': 'annule'});
+    }
+    await batch.commit();
+  }
 }

@@ -10,6 +10,7 @@ import '../../data/bail.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'bail_quittance.dart';
+import 'bail_releve.dart';
 
 class FicheBailPage extends StatelessWidget {
   const FicheBailPage({super.key, required this.id});
@@ -36,11 +37,15 @@ class FicheBailPage extends StatelessWidget {
         return _Shell(
           child: StreamBuilder<List<Echeance>>(
             stream: repo.echeancesDuBail(id),
-            builder: (context, eSnap) => _Content(
-              bail: bail,
-              echeances: eSnap.data ?? const [],
-              repo: repo,
-              agence: auth.displayName,
+            builder: (context, eSnap) => StreamBuilder<List<Depense>>(
+              stream: repo.depensesDuBail(id),
+              builder: (context, dSnap) => _Content(
+                bail: bail,
+                echeances: eSnap.data ?? const [],
+                depenses: dSnap.data ?? const [],
+                repo: repo,
+                agence: auth.displayName,
+              ),
             ),
           ),
         );
@@ -80,11 +85,13 @@ class _Content extends StatelessWidget {
   const _Content({
     required this.bail,
     required this.echeances,
+    required this.depenses,
     required this.repo,
     required this.agence,
   });
   final Bail bail;
   final List<Echeance> echeances;
+  final List<Depense> depenses;
   final BailRepository repo;
   final String agence;
 
@@ -102,6 +109,10 @@ class _Content extends StatelessWidget {
         _ => 0,
       };
 
+  double get _depProprio => depenses
+      .where((d) => d.charge == DepenseCharge.proprietaire)
+      .fold(0, (a, d) => a + d.montant);
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
@@ -114,10 +125,16 @@ class _Content extends StatelessWidget {
           _conditions(),
           const SizedBox(height: 16),
           _echeancier(context),
+          const SizedBox(height: 16),
+          _depensesCard(context),
         ],
       );
       final right = Column(
         children: [
+          if (bail.termine) ...[
+            _clotureCard(),
+            const SizedBox(height: 14),
+          ],
           _actions(context),
           const SizedBox(height: 14),
           _reversement(),
@@ -174,7 +191,7 @@ class _Content extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('LOYER MENSUEL',
+              const Text('LOYER MENSUEL',
                   style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -211,33 +228,28 @@ class _Content extends StatelessWidget {
 
   Widget _echeancier(BuildContext context) {
     final paye = echeances.where((e) => e.statutBrut == 'paye').length;
-    final retard = echeances
-        .where((e) => e.statutAffiche() == EStatut.retard)
-        .length;
-    final du =
-        echeances.where((e) => e.statutAffiche() == EStatut.du).length;
+    final retard =
+        echeances.where((e) => e.statutAffiche() == EStatut.retard).length;
+    final du = echeances.where((e) => e.statutAffiche() == EStatut.du).length;
     return AppCard(
       title: 'Échéancier',
-      trailing: Text(
-          '$paye payés · $du dû · $retard retard',
+      trailing: Text('$paye payés · $du dû · $retard retard',
           style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft)),
       child: Column(
-        children: [
-          for (final e in echeances) _echRow(context, e),
-        ],
+        children: [for (final e in echeances) _echRow(context, e)],
       ),
     );
   }
 
   Widget _echRow(BuildContext context, Echeance e) {
     final s = e.statutAffiche();
-    final (dotColor, _) = switch (s) {
-      EStatut.paye => (const Color(0xFF2F6B45), 0),
-      EStatut.partiel => (const Color(0xFF7A5C1F), 0),
-      EStatut.du => (const Color(0xFF7A5C1F), 0),
-      EStatut.retard => (const Color(0xFF8A4033), 0),
-      EStatut.annule => (const Color(0xFFD7D7D7), 0),
-      EStatut.aVenir => (const Color(0xFFD7D7D7), 0),
+    final dotColor = switch (s) {
+      EStatut.paye => const Color(0xFF2F6B45),
+      EStatut.partiel => const Color(0xFF7A5C1F),
+      EStatut.du => const Color(0xFF7A5C1F),
+      EStatut.retard => const Color(0xFF8A4033),
+      EStatut.annule => const Color(0xFFD7D7D7),
+      EStatut.aVenir => const Color(0xFFD7D7D7),
     };
     final r = e.joursDeRetard();
     final sub = switch (s) {
@@ -246,6 +258,7 @@ class _Content extends StatelessWidget {
             '${e.methode.isNotEmpty ? ' · ${e.methode}' : ''}',
       EStatut.partiel =>
         'Partiel : ${_fmt.format(e.montantPaye.round())} / ${_fmt.format(e.montantDu.round())}',
+      EStatut.annule => 'Annulée (clôture du bail)',
       EStatut.retard =>
         'En retard — échéance ${e.dateEcheance == null ? '' : _df.format(e.dateEcheance!)}'
             '${r != null ? ' · +$r j' : ''}',
@@ -278,8 +291,12 @@ class _Content extends StatelessWidget {
           SizedBox(
             width: 90,
             child: Text(e.periodeLabel,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    decoration: s == EStatut.annule
+                        ? TextDecoration.lineThrough
+                        : null)),
           ),
           Expanded(
             child: Text(sub,
@@ -310,7 +327,9 @@ class _Content extends StatelessWidget {
                       ),
                       child: const Text('Quittance'),
                     )
-                  : (s == EStatut.du || s == EStatut.retard || s == EStatut.partiel)
+                  : (s == EStatut.du ||
+                          s == EStatut.retard ||
+                          s == EStatut.partiel)
                       ? _miniPay(context, e)
                       : const SizedBox.shrink(),
             ),
@@ -334,6 +353,94 @@ class _Content extends StatelessWidget {
         ),
       );
 
+  // ── Dépenses ──────────────────────────────────────────────────────────────
+  Widget _depensesCard(BuildContext context) {
+    final total = depenses.fold<double>(0, (a, d) => a + d.montant);
+    return AppCard(
+      title: 'Dépenses & réparations',
+      trailing: depenses.isEmpty
+          ? null
+          : Text('${_fmt.format(total.round())} FCFA',
+              style: const TextStyle(
+                  fontSize: 11.5, color: AppTheme.inkSoft)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (depenses.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Text(
+                  'Aucune dépense enregistrée. Ajoutez les réparations et frais '
+                  'pour qu\'ils apparaissent sur le relevé de gérance.',
+                  style: TextStyle(fontSize: 12.5, color: AppTheme.inkSoft)),
+            )
+          else
+            for (final d in depenses) _depRow(context, d),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => _openDepense(context),
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('Ajouter une dépense'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.ink,
+                side: const BorderSide(color: AppTheme.line),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                textStyle:
+                    const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _depRow(BuildContext context, Depense d) => Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Color(0xFFF1F1F1))),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 78,
+              child: Text(d.date == null ? '—' : _df.format(d.date!),
+                  style: const TextStyle(
+                      fontSize: 11.5, color: AppTheme.inkSoft)),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(d.libelle.isEmpty ? d.categorie : d.libelle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w600)),
+                  Text('${d.categorie} · ${depenseChargeCourt(d.charge)}',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppTheme.inkSoft)),
+                ],
+              ),
+            ),
+            Text('${_fmt.format(d.montant.round())} FCFA',
+                style: const TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w700)),
+            IconButton(
+              onPressed: () => _supprDepense(context, d),
+              icon: const Icon(Icons.close_rounded, size: 15),
+              color: AppTheme.inkSoft,
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Supprimer',
+            ),
+          ],
+        ),
+      );
+
+  // ── Actions ───────────────────────────────────────────────────────────────
   Widget _actions(BuildContext context) {
     final prochaine = echeances
         .where((e) => e.statutBrut != 'paye' && e.statutBrut != 'annule')
@@ -347,16 +454,18 @@ class _Content extends StatelessWidget {
           _actBtn(
             'Marquer un loyer payé',
             filled: true,
-            onTap: prochaine.isEmpty
-                ? null
-                : () => _openMarquerPaye(context, prochaine.first),
+            onTap: (bail.actif && prochaine.isNotEmpty)
+                ? () => _openMarquerPaye(context, prochaine.first)
+                : null,
           ),
+          const SizedBox(height: 8),
+          _actBtn('Relevé de gérance', onTap: () => _openReleve(context)),
           const SizedBox(height: 8),
           _actBtn('Relancer le locataire', onTap: () => _relance(context)),
           const SizedBox(height: 8),
-          _actBtn('Résilier le bail',
+          _actBtn('Clôturer le bail',
               danger: true,
-              onTap: bail.actif ? () => _resilier(context) : null),
+              onTap: bail.actif ? () => _openCloture(context) : null),
         ],
       ),
     );
@@ -364,7 +473,8 @@ class _Content extends StatelessWidget {
 
   Widget _actBtn(String label,
       {bool filled = false, bool danger = false, VoidCallback? onTap}) {
-    final c = danger ? const Color(0xFF8A4033) : (filled ? Colors.white : AppTheme.ink);
+    final c =
+        danger ? const Color(0xFF8A4033) : (filled ? Colors.white : AppTheme.ink);
     return SizedBox(
       height: 42,
       child: OutlinedButton(
@@ -387,14 +497,37 @@ class _Content extends StatelessWidget {
     );
   }
 
+  Widget _clotureCard() => AppCard(
+        title: 'Bail clôturé',
+        child: Column(
+          children: [
+            _kv('Fin de bail',
+                bail.finDate == null ? '—' : _df.format(bail.finDate!)),
+            _kv('Motif', bail.finMotifLabel),
+            _kv('Caution', bail.cautionStatutLabel),
+            if (bail.cautionRestitue > 0)
+              _kv('Restitué',
+                  '${_fmt.format(bail.cautionRestitue.round())} FCFA'),
+            if (bail.cautionRetenue > 0)
+              _kv('Retenu', '${_fmt.format(bail.cautionRetenue.round())} FCFA',
+                  last: true),
+          ],
+        ),
+      );
+
   Widget _reversement() => AppCard(
         title: 'Reversement propriétaire',
         child: Column(children: [
           _kv('Encaissé (bail)', '${_fmt.format(_encaisse.round())} FCFA'),
           _kv('Commission', '− ${_fmt.format(_commission.round())} FCFA'),
-          _kv('Net à reverser',
-              '${_fmt.format((_encaisse - _commission).round())} FCFA',
-              last: true, strong: true),
+          if (_depProprio > 0)
+            _kv('Dépenses propriétaire',
+                '− ${_fmt.format(_depProprio.round())} FCFA'),
+          _kv(
+              'Net à reverser',
+              '${_fmt.format((_encaisse - _commission - _depProprio).round())} FCFA',
+              last: true,
+              strong: true),
         ]),
       );
 
@@ -432,6 +565,7 @@ class _Content extends StatelessWidget {
         ),
       );
 
+  // ── ouvertures de dialogues ──────────────────────────────────────────────
   Future<void> _openMarquerPaye(BuildContext context, Echeance e) async {
     final done = await showDialog<bool>(
       context: context,
@@ -443,6 +577,70 @@ class _Content extends StatelessWidget {
     }
   }
 
+  Future<void> _openDepense(BuildContext context) async {
+    final done = await showDialog<bool>(
+      context: context,
+      builder: (_) => _DepenseDialog(bail: bail, repo: repo),
+    );
+    if (done == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Dépense ajoutée.')));
+    }
+  }
+
+  Future<void> _supprDepense(BuildContext context, Depense d) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Supprimer cette dépense ?',
+            style: TextStyle(fontSize: 16)),
+        content: Text('${d.libelle.isEmpty ? d.categorie : d.libelle} — '
+            '${_fmt.format(d.montant.round())} FCFA'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Annuler')),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF8A4033)),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await repo.supprimerDepense(d.id);
+  }
+
+  Future<void> _openReleve(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _RelevePeriodeDialog(
+        bail: bail,
+        echeances: echeances,
+        depenses: depenses,
+        agence: agence,
+      ),
+    );
+  }
+
+  Future<void> _openCloture(BuildContext context) async {
+    final done = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ClotureDialog(
+        bail: bail,
+        echeances: echeances,
+        repo: repo,
+        agence: agence,
+      ),
+    );
+    if (done == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bail clôturé.')));
+    }
+  }
+
   Future<void> _relance(BuildContext context) async {
     final tel = bail.locataireTel.replaceAll(RegExp(r'[^0-9]'), '');
     final msg = Uri.encodeComponent(
@@ -451,35 +649,6 @@ class _Content extends StatelessWidget {
     final uri = Uri.parse('https://wa.me/$tel?text=$msg');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  Future<void> _resilier(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text('Résilier ce bail ?', style: TextStyle(fontSize: 16)),
-        content: const Text(
-          'Le bail passe en « résilié ». L\'historique des loyers et des quittances '
-          'est conservé. Les échéances futures ne sont plus suivies.',
-          style: TextStyle(fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: const Text('Annuler')),
-          FilledButton(
-            onPressed: () => Navigator.pop(c, true),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8A4033)),
-            child: const Text('Résilier'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await repo.resilier(bail.id);
-      if (context.mounted) context.go('/baux');
     }
   }
 }
@@ -638,9 +807,7 @@ class _MarquerPayeDialogState extends State<_MarquerPayeDialog> {
                     TextField(
                       controller: _montant,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       style: const TextStyle(fontSize: 13),
                       decoration: const InputDecoration(isDense: true),
                     ),
@@ -660,8 +827,7 @@ class _MarquerPayeDialogState extends State<_MarquerPayeDialog> {
                     color: _partiel ? AppTheme.ink : AppTheme.inkSoft),
                 const SizedBox(width: 8),
                 const Expanded(
-                  child: Text(
-                      'Paiement partiel — le reste dû reste affiché',
+                  child: Text('Paiement partiel — le reste dû reste affiché',
                       style: TextStyle(fontSize: 12, color: AppTheme.inkSoft)),
                 ),
               ]),
@@ -702,5 +868,721 @@ class _MarquerPayeDialogState extends State<_MarquerPayeDialog> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(t, style: const TextStyle(fontSize: 13)),
+      );
+}
+
+// ── Dialogue « Ajouter une dépense » ───────────────────────────────────────
+
+class _DepenseDialog extends StatefulWidget {
+  const _DepenseDialog({required this.bail, required this.repo});
+  final Bail bail;
+  final BailRepository repo;
+
+  @override
+  State<_DepenseDialog> createState() => _DepenseDialogState();
+}
+
+class _DepenseDialogState extends State<_DepenseDialog> {
+  final _montant = TextEditingController();
+  final _libelle = TextEditingController();
+  String _categorie = kDepenseCategories.first;
+  DepenseCharge _charge = DepenseCharge.proprietaire;
+  DateTime _date = DateTime.now();
+  bool _busy = false;
+
+  static final _df = DateFormat('d MMM yyyy', 'fr');
+
+  @override
+  void dispose() {
+    _montant.dispose();
+    _libelle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final m = double.tryParse(_montant.text.trim().replaceAll(' ', '')) ?? 0;
+    if (m <= 0) return;
+    setState(() => _busy = true);
+    try {
+      await widget.repo.ajouterDepense(
+        bailId: widget.bail.id,
+        montant: m,
+        categorie: _categorie,
+        libelle: _libelle.text,
+        charge: _charge,
+        date: _date,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ajout impossible.')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      title: const Text('Ajouter une dépense', style: TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 440,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _lbl('Libellé'),
+            TextField(
+              controller: _libelle,
+              style: const TextStyle(fontSize: 13),
+              decoration: const InputDecoration(
+                  isDense: true, hintText: 'Ex. Remplacement chauffe-eau'),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _lbl('Catégorie'),
+                    Container(
+                      height: 42,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.line),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _categorie,
+                          isExpanded: true,
+                          style: const TextStyle(
+                              fontSize: 13, color: AppTheme.ink),
+                          items: [
+                            for (final c in kDepenseCategories)
+                              DropdownMenuItem(value: c, child: Text(c)),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => _categorie = v ?? _categorie),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _lbl('Montant (FCFA)'),
+                    TextField(
+                      controller: _montant,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(fontSize: 13),
+                      decoration: const InputDecoration(isDense: true),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            _lbl('Date'),
+            InkWell(
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now().add(const Duration(days: 3)),
+                );
+                if (d != null) setState(() => _date = d);
+              },
+              child: Container(
+                height: 40,
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppTheme.line),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(_df.format(_date),
+                    style: const TextStyle(fontSize: 13)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _lbl('Imputation'),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final c in DepenseCharge.values)
+                  GestureDetector(
+                    onTap: () => setState(() => _charge = c),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _charge == c ? AppTheme.ink : Colors.white,
+                        border: Border.all(
+                            color: _charge == c ? AppTheme.ink : AppTheme.line),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(depenseChargeCourt(c),
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _charge == c
+                                  ? Colors.white
+                                  : AppTheme.ink)),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _charge == DepenseCharge.proprietaire
+                  ? 'Déduite du net à reverser au propriétaire.'
+                  : _charge == DepenseCharge.locataire
+                      ? 'Signalée sur le relevé, à refacturer au locataire.'
+                      : 'Supportée par l\'agence — n\'affecte pas le reversement.',
+              style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context, false),
+            child: const Text('Annuler')),
+        ElevatedButton(
+          onPressed: _busy ? null : _save,
+          child: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : const Text('Ajouter'),
+        ),
+      ],
+    );
+  }
+
+  Widget _lbl(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Text(t,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+      );
+}
+
+// ── Dialogue « Relevé de gérance » ─────────────────────────────────────────
+
+enum _Periode { moisEnCours, moisDernier, trimestre, annee, tout }
+
+class _RelevePeriodeDialog extends StatefulWidget {
+  const _RelevePeriodeDialog({
+    required this.bail,
+    required this.echeances,
+    required this.depenses,
+    required this.agence,
+  });
+  final Bail bail;
+  final List<Echeance> echeances;
+  final List<Depense> depenses;
+  final String agence;
+
+  @override
+  State<_RelevePeriodeDialog> createState() => _RelevePeriodeDialogState();
+}
+
+class _RelevePeriodeDialogState extends State<_RelevePeriodeDialog> {
+  _Periode _p = _Periode.moisEnCours;
+  bool _excel = false;
+  bool _busy = false;
+
+  ({DateTime debut, DateTime fin, String label}) _bornes() {
+    final now = DateTime.now();
+    switch (_p) {
+      case _Periode.moisEnCours:
+        return (
+          debut: DateTime(now.year, now.month, 1),
+          fin: DateTime(now.year, now.month + 1, 0),
+          label: DateFormat('MMMM yyyy', 'fr').format(now),
+        );
+      case _Periode.moisDernier:
+        final m = DateTime(now.year, now.month - 1, 1);
+        return (
+          debut: m,
+          fin: DateTime(m.year, m.month + 1, 0),
+          label: DateFormat('MMMM yyyy', 'fr').format(m),
+        );
+      case _Periode.trimestre:
+        final d = DateTime(now.year, now.month - 2, 1);
+        return (
+          debut: d,
+          fin: DateTime(now.year, now.month + 1, 0),
+          label: '3 derniers mois',
+        );
+      case _Periode.annee:
+        return (
+          debut: DateTime(now.year, 1, 1),
+          fin: DateTime(now.year, 12, 31),
+          label: 'Année ${now.year}',
+        );
+      case _Periode.tout:
+        return (
+          debut: DateTime(2020),
+          fin: DateTime(now.year + 1),
+          label: 'Depuis le début',
+        );
+    }
+  }
+
+  Future<void> _go() async {
+    setState(() => _busy = true);
+    final b = _bornes();
+    try {
+      await BailReleve.generer(
+        bail: widget.bail,
+        echeances: widget.echeances,
+        depenses: widget.depenses,
+        agence: widget.agence,
+        debut: b.debut,
+        fin: b.fin,
+        periodeLabel: b.label,
+        excel: _excel,
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Génération impossible.')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = {
+      _Periode.moisEnCours: 'Mois en cours',
+      _Periode.moisDernier: 'Mois dernier',
+      _Periode.trimestre: '3 derniers mois',
+      _Periode.annee: 'Année civile',
+      _Periode.tout: 'Depuis le début',
+    };
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      title: const Text('Relevé de gérance', style: TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${widget.bail.bienTitre} · ${widget.bail.locataireNom}',
+                style: const TextStyle(fontSize: 12.5, color: AppTheme.inkSoft)),
+            const SizedBox(height: 14),
+            _lbl('Période'),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final e in labels.entries)
+                  GestureDetector(
+                    onTap: () => setState(() => _p = e.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _p == e.key ? AppTheme.ink : Colors.white,
+                        border: Border.all(
+                            color:
+                                _p == e.key ? AppTheme.ink : AppTheme.line),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(e.value,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _p == e.key
+                                  ? Colors.white
+                                  : AppTheme.ink)),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _lbl('Format'),
+            Row(children: [
+              _fmtPill('PDF', !_excel, () => setState(() => _excel = false)),
+              const SizedBox(width: 8),
+              _fmtPill('Excel', _excel, () => setState(() => _excel = true)),
+            ]),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context),
+            child: const Text('Annuler')),
+        ElevatedButton(
+          onPressed: _busy ? null : _go,
+          child: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : const Text('Télécharger'),
+        ),
+      ],
+    );
+  }
+
+  Widget _fmtPill(String label, bool on, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: on ? AppTheme.ink : Colors.white,
+            border: Border.all(color: on ? AppTheme.ink : AppTheme.line),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: on ? Colors.white : AppTheme.ink)),
+        ),
+      );
+
+  Widget _lbl(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(t,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+      );
+}
+
+// ── Dialogue « Clôturer le bail » ──────────────────────────────────────────
+
+class _ClotureDialog extends StatefulWidget {
+  const _ClotureDialog({
+    required this.bail,
+    required this.echeances,
+    required this.repo,
+    required this.agence,
+  });
+  final Bail bail;
+  final List<Echeance> echeances;
+  final BailRepository repo;
+  final String agence;
+
+  @override
+  State<_ClotureDialog> createState() => _ClotureDialogState();
+}
+
+class _ClotureDialogState extends State<_ClotureDialog> {
+  static const _motifs = [
+    'Fin de bail',
+    'Résiliation',
+    'Départ anticipé',
+    'Autre',
+  ];
+  String _motif = 'Fin de bail';
+  DateTime _fin = DateTime.now();
+  late final _restitue =
+      TextEditingController(text: widget.bail.caution.round().toString());
+  final _retenue = TextEditingController(text: '0');
+  final _note = TextEditingController();
+  bool _annulerFutures = true;
+  bool _recu = true;
+  bool _busy = false;
+
+  static final _fmt = NumberFormat('#,###', 'fr_FR');
+  static final _df = DateFormat('d MMM yyyy', 'fr');
+
+  @override
+  void dispose() {
+    _restitue.dispose();
+    _retenue.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  double get _restV =>
+      double.tryParse(_restitue.text.trim().replaceAll(' ', '')) ?? 0;
+  double get _retV =>
+      double.tryParse(_retenue.text.trim().replaceAll(' ', '')) ?? 0;
+
+  List<String> get _aAnnuler {
+    if (!_annulerFutures) return const [];
+    final f = DateTime(_fin.year, _fin.month, _fin.day, 23, 59, 59);
+    return widget.echeances
+        .where((e) =>
+            e.statutBrut == 'ouvert' &&
+            e.dateEcheance != null &&
+            e.dateEcheance!.isAfter(f))
+        .map((e) => e.id)
+        .toList();
+  }
+
+  bool get _valide => _restV + _retV <= widget.bail.caution + 0.5;
+
+  Future<void> _save() async {
+    if (!_valide) return;
+    setState(() => _busy = true);
+    try {
+      await widget.repo.cloturerBail(
+        bailId: widget.bail.id,
+        finDate: _fin,
+        motif: _motif,
+        cautionRestitue: _restV,
+        cautionRetenue: _retV,
+        cautionNote: _note.text,
+        echeancesAAnnuler: _aAnnuler,
+      );
+      if (_recu && mounted) {
+        await BailReleve.recuCaution(
+          bail: widget.bail,
+          agence: widget.agence,
+          finDate: _fin,
+          cautionTotale: widget.bail.caution,
+          restitue: _restV,
+          retenue: _retV,
+          note: _note.text,
+        );
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Clôture impossible.')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nbFutures = _aAnnuler.length;
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      title: const Text('Clôturer le bail', style: TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 460,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${widget.bail.locataireNom} · ${widget.bail.bienTitre}',
+                  style: const TextStyle(
+                      fontSize: 12.5, color: AppTheme.inkSoft)),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _lbl('Motif'),
+                      Container(
+                        height: 42,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppTheme.line),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _motif,
+                            isExpanded: true,
+                            style: const TextStyle(
+                                fontSize: 13, color: AppTheme.ink),
+                            items: [
+                              for (final m in _motifs)
+                                DropdownMenuItem(value: m, child: Text(m)),
+                            ],
+                            onChanged: (v) =>
+                                setState(() => _motif = v ?? _motif),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _lbl('Date de fin'),
+                      InkWell(
+                        onTap: () async {
+                          final d = await showDatePicker(
+                            context: context,
+                            initialDate: _fin,
+                            firstDate: DateTime(2020),
+                            lastDate:
+                                DateTime.now().add(const Duration(days: 365)),
+                          );
+                          if (d != null) setState(() => _fin = d);
+                        },
+                        child: Container(
+                          height: 42,
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppTheme.line),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(_df.format(_fin),
+                              style: const TextStyle(fontSize: 13)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.panel,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                        'Dépôt de garantie : ${_fmt.format(widget.bail.caution.round())} FCFA',
+                        style: const TextStyle(
+                            fontSize: 12.5, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 10),
+                    Row(children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _lbl('Restitué au locataire'),
+                            TextField(
+                              controller: _restitue,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              style: const TextStyle(fontSize: 13),
+                              decoration: const InputDecoration(isDense: true),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _lbl('Retenues'),
+                            TextField(
+                              controller: _retenue,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              style: const TextStyle(fontSize: 13),
+                              decoration: const InputDecoration(isDense: true),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]),
+                    if (!_valide) ...[
+                      const SizedBox(height: 6),
+                      const Text(
+                          'Restitué + retenues dépasse le dépôt de garantie.',
+                          style: TextStyle(
+                              fontSize: 11, color: Color(0xFF8A4033))),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _lbl('Détail des retenues (optionnel)'),
+              TextField(
+                controller: _note,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 13),
+                decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: 'Ex. peinture chambre, facture eau impayée…'),
+              ),
+              const SizedBox(height: 10),
+              _check(
+                _annulerFutures,
+                nbFutures > 0
+                    ? 'Annuler les $nbFutures échéance${nbFutures > 1 ? 's' : ''} postérieure${nbFutures > 1 ? 's' : ''} à la date de fin'
+                    : 'Annuler les échéances postérieures à la date de fin',
+                () => setState(() => _annulerFutures = !_annulerFutures),
+              ),
+              _check(
+                _recu,
+                'Générer le reçu de solde de caution (PDF)',
+                () => setState(() => _recu = !_recu),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context, false),
+            child: const Text('Annuler')),
+        ElevatedButton(
+          onPressed: _busy || !_valide ? null : _save,
+          style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF8A4033)),
+          child: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : const Text('Clôturer le bail'),
+        ),
+      ],
+    );
+  }
+
+  Widget _check(bool on, String label, VoidCallback onTap) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Row(children: [
+            Icon(
+                on
+                    ? Icons.check_box_rounded
+                    : Icons.check_box_outline_blank_rounded,
+                size: 18,
+                color: on ? AppTheme.ink : AppTheme.inkSoft),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(label,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppTheme.inkSoft)),
+            ),
+          ]),
+        ),
+      );
+
+  Widget _lbl(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Text(t,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
       );
 }
