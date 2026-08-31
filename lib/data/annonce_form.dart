@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import 'annonce_catalog.dart';
+import 'house.dart';
 
 /// Une photo choisie dans le wizard (octets en mémoire, pas encore uploadée).
 class PickedPhoto {
@@ -28,6 +29,33 @@ class AnnonceForm extends ChangeNotifier {
   AnnonceForm(this.partenaireRef);
 
   final DocumentReference<Map<String, dynamic>> partenaireRef;
+
+  /// Non nul → mode « compléter et publier » : `submit()` met à jour CE document
+  /// `house` (bien privé de la gérance) au lieu d'en créer un neuf, ce qui
+  /// préserve le lien `bail.house_ref`.
+  DocumentReference<Map<String, dynamic>>? editRef;
+
+  /// Pré-remplit le formulaire depuis un bien existant (bien privé de gérance).
+  /// Ne reprend que ce qui est fiable : type de location, prix (= loyer), caution.
+  /// Le quartier d'un bien privé est un texte libre → laissé à ressaisir.
+  void seedFromHouse(House h) {
+    editRef = FirebaseFirestore.instance.collection('house').doc(h.id);
+    locationtype =
+        h.locationType == 'Journalier' ? 'Journalier' : 'Mensuel';
+    if (kTypesLogement.contains(h.type)) type = h.type;
+    if (quartierInfoFor(h.quartier) != null) quartier = h.quartier;
+    zone = h.zone;
+    cite = h.cite;
+    if (h.nbChambre != null && h.nbChambre! > 0) nbchambre = h.nbChambre!;
+    if (h.nbBain != null && h.nbBain! > 0) nbbain = h.nbBain!;
+    if (h.nbSalon != null && h.nbSalon! > 0) nbsalon = h.nbSalon!.round();
+    if ((h.prix ?? 0) > 0) prix = h.prix!;
+    if (h.cautionMois != null && h.cautionMois! > 0) {
+      cautionMois = h.cautionMois!;
+    }
+    if (h.description.isNotEmpty) description = h.description;
+    notifyListeners();
+  }
 
   // ── Étape 1 — type & localisation ──
   String locationtype = '';
@@ -133,6 +161,7 @@ class AnnonceForm extends ChangeNotifier {
       locationtype.isNotEmpty &&
       type.isNotEmpty &&
       quartier.isNotEmpty &&
+      (!quartierADesZones(quartier) || zone.trim().isNotEmpty) &&
       cite.trim().isNotEmpty &&
       adresse.trim().isNotEmpty &&
       hasPosition;
@@ -211,7 +240,8 @@ class AnnonceForm extends ChangeNotifier {
         erreur = 'Session expirée. Reconnectez-vous.';
         return false;
       }
-      final doc = FirebaseFirestore.instance.collection('house').doc();
+      final doc =
+          editRef ?? FirebaseFirestore.instance.collection('house').doc();
       final stamp = DateTime.now().microsecondsSinceEpoch;
 
       // Upload par catégorie (séquentiel → ordre stable).
@@ -260,13 +290,14 @@ class AnnonceForm extends ChangeNotifier {
         'conciergenum': conciergeNum.trim(),
         'conciergephoto': '',
         'active': false,
+        'sur_marketplace': true,
         'statut_validation': 'en_attente',
         'motif_rejet': '',
         'image': image,
         'photos_categories': urlsParCat,
         'Comodite': comodites.toList(),
         'soumis_le': FieldValue.serverTimestamp(),
-        'created_at': FieldValue.serverTimestamp(),
+        if (editRef == null) 'created_at': FieldValue.serverTimestamp(),
       };
 
       if (isJournalier) {
@@ -286,7 +317,11 @@ class AnnonceForm extends ChangeNotifier {
         data['bail_min_mois'] = bailMinMois;
       }
 
-      await doc.set(data);
+      if (editRef != null) {
+        await doc.update(data);
+      } else {
+        await doc.set(data);
+      }
       return true;
     } catch (e) {
       debugPrint('AnnonceForm.submit échec : $e');

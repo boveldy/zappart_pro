@@ -41,6 +41,68 @@ QuartierInfo? quartierInfoFor(String key) {
   return null;
 }
 
+/// Zones (sous-quartiers) — **repris à l'identique de l'app officielle**
+/// (`zones_catalog.dart`). À Dakar « Liberté » n'est pas un quartier mais six
+/// quartiers distincts (Liberté 1→6), idem HLM, Sacré-Cœur, Fann, Maristes,
+/// Mermoz. Modèle à deux niveaux : `house.quartier` = le parent,
+/// `house.zone` = la zone (avec son propre GPS).
+typedef ZoneInfo = ({String label, double lat, double lng});
+
+const Map<String, List<ZoneInfo>> kZonesParQuartier = {
+  'Liberté': [
+    (label: 'Liberté 1', lat: 14.7095, lng: -17.4577),
+    (label: 'Liberté 2', lat: 14.7118, lng: -17.4560),
+    (label: 'Liberté 3', lat: 14.7140, lng: -17.4548),
+    (label: 'Liberté 4', lat: 14.7166, lng: -17.4530),
+    (label: 'Liberté 5', lat: 14.7195, lng: -17.4512),
+    (label: 'Liberté 6', lat: 14.7238, lng: -17.4585),
+    (label: 'Liberté 6 Extension', lat: 14.7272, lng: -17.4622),
+  ],
+  'HLM': [
+    (label: 'HLM 1', lat: 14.6931, lng: -17.4498),
+    (label: 'HLM 2', lat: 14.6947, lng: -17.4483),
+    (label: 'HLM 3', lat: 14.6962, lng: -17.4470),
+    (label: 'HLM 4', lat: 14.6978, lng: -17.4457),
+    (label: 'HLM 5', lat: 14.6994, lng: -17.4444),
+    (label: 'HLM 6', lat: 14.7010, lng: -17.4430),
+    (label: 'HLM Fass', lat: 14.6875, lng: -17.4530),
+  ],
+  'Sacré-coeur': [
+    (label: 'Sacré-Cœur 1', lat: 14.7020, lng: -17.4655),
+    (label: 'Sacré-Cœur 2', lat: 14.7045, lng: -17.4638),
+    (label: 'Sacré-Cœur 3', lat: 14.7078, lng: -17.4620),
+    (label: 'Sacré-Cœur 3 VDN', lat: 14.7105, lng: -17.4655),
+  ],
+  'Fann': [
+    (label: 'Fann Résidence', lat: 14.6905, lng: -17.4720),
+    (label: 'Fann Hock', lat: 14.6842, lng: -17.4602),
+  ],
+  'Mariste': [
+    (label: 'Maristes 1', lat: 14.7345, lng: -17.4265),
+    (label: 'Maristes 2', lat: 14.7378, lng: -17.4232),
+    (label: 'Hann Maristes', lat: 14.7310, lng: -17.4295),
+  ],
+  'Mermoz': [
+    (label: 'Mermoz Pipeline', lat: 14.7040, lng: -17.4720),
+    (label: 'Mermoz Sud', lat: 14.7092, lng: -17.4785),
+  ],
+};
+
+List<ZoneInfo> zonesDuQuartier(String quartier) =>
+    kZonesParQuartier[quartier] ?? const [];
+
+/// Le quartier est découpé en zones → la zone devient **obligatoire** dans le
+/// wizard (même règle que l'app officielle).
+bool quartierADesZones(String quartier) =>
+    (kZonesParQuartier[quartier] ?? const []).isNotEmpty;
+
+ZoneInfo? zoneInfoDe(String quartier, String zone) {
+  for (final z in zonesDuQuartier(quartier)) {
+    if (z.label == zone) return z;
+  }
+  return null;
+}
+
 const List<String> kTypesLogement = [
   'Appartement',
   'Villa',

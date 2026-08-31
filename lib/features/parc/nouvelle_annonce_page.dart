@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,13 +10,20 @@ import '../../core/ui.dart';
 import '../../core/widgets/map_picker.dart';
 import '../../data/annonce_catalog.dart';
 import '../../data/annonce_form.dart';
+import '../../data/house.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 
 /// Wizard web d'ajout d'annonce (Zappart Pro). 7 écrans, navigation par boutons.
 /// La fiche part en `statut_validation: 'en_attente'` → file de validation admin.
+///
+/// [completerId] non nul → mode « Compléter et publier » : on charge un bien de
+/// gestion « privé » et on le complète (photos, description…) pour le mettre sur
+/// la marketplace, sans changer de document (le lien `bail.house_ref` est
+/// préservé).
 class NouvelleAnnoncePage extends StatefulWidget {
-  const NouvelleAnnoncePage({super.key});
+  const NouvelleAnnoncePage({super.key, this.completerId});
+  final String? completerId;
 
   @override
   State<NouvelleAnnoncePage> createState() => _NouvelleAnnoncePageState();
@@ -23,7 +31,41 @@ class NouvelleAnnoncePage extends StatefulWidget {
 
 class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
   AnnonceForm? _form;
+  bool _seeding = false;
   int _step = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.completerId != null) {
+      _seeding = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _seed());
+    }
+  }
+
+  Future<void> _seed() async {
+    final ref = context.read<AuthService>().partenaireRef;
+    if (ref == null) {
+      if (mounted) setState(() => _seeding = false);
+      return;
+    }
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('house')
+          .doc(widget.completerId)
+          .get();
+      final f = AnnonceForm(ref);
+      if (snap.exists) f.seedFromHouse(House.fromDoc(snap));
+      if (mounted) {
+        setState(() {
+          _form = f;
+          _seeding = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _seeding = false);
+    }
+  }
 
   static const _titres = [
     'Localisation',
@@ -47,7 +89,21 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
         ),
       );
     }
-    _form ??= AnnonceForm(ref);
+    if (_seeding) {
+      return const PageScaffold(
+        title: 'Compléter et publier',
+        child: Center(
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.ink)),
+      );
+    }
+    if (widget.completerId == null) _form ??= AnnonceForm(ref);
+    if (_form == null) {
+      return const PageScaffold(
+        title: 'Compléter et publier',
+        child: EmptyState('Bien introuvable.'),
+      );
+    }
+    final completer = _form!.editRef != null;
 
     return ChangeNotifierProvider<AnnonceForm>.value(
       value: _form!,
@@ -61,6 +117,24 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (completer) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF3FB),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFD5E1F2)),
+                        ),
+                        child: const Text(
+                          'Vous publiez un bien de votre gérance sur la marketplace. '
+                          'Le bail en cours reste lié à ce bien. Après validation par '
+                          'l\'équipe Zappart, il sera visible des clients.',
+                          style: TextStyle(fontSize: 12, color: Color(0xFF2C4A73)),
+                        ),
+                      ),
+                    ],
                     _TopBar(step: _step, total: _titres.length),
                     const SizedBox(height: 8),
                     Text(_titres[_step], style: AppTheme.h1),
@@ -112,14 +186,16 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
       };
 
   Future<void> _submit(AnnonceForm f) async {
+    final completer = f.editRef != null;
     final ok = await f.submit();
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            "Annonce envoyée pour validation. Elle sera en ligne dès son approbation."),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(completer
+            ? "Bien envoyé pour validation. Il rejoindra la marketplace dès son approbation."
+            : "Annonce envoyée pour validation. Elle sera en ligne dès son approbation."),
       ));
-      context.go('/parc');
+      context.go(completer ? '/parc/${f.editRef!.id}' : '/parc');
     }
   }
 }
@@ -389,9 +465,31 @@ class _StepLocalisation extends StatelessWidget {
             ],
             onChanged: (v) {
               f.quartier = v ?? '';
+              f.zone = ''; // changer de quartier invalide la zone
               f.touch();
             },
           ),
+          if (quartierADesZones(f.quartier)) ...[
+            const SizedBox(height: 14),
+            const _Label('Zone / sous-quartier',
+                hint: 'Ce quartier est découpé — précisez la zone'),
+            DropdownButtonFormField<String>(
+              value: zonesDuQuartier(f.quartier)
+                      .any((z) => z.label == f.zone)
+                  ? f.zone
+                  : null,
+              isExpanded: true,
+              hint: const Text('Choisir la zone'),
+              items: [
+                for (final z in zonesDuQuartier(f.quartier))
+                  DropdownMenuItem(value: z.label, child: Text(z.label)),
+              ],
+              onChanged: (v) {
+                f.zone = v ?? '';
+                f.touch();
+              },
+            ),
+          ],
           const SizedBox(height: 14),
           const _Label('Cité / résidence'),
           _Field(
@@ -399,16 +497,6 @@ class _StepLocalisation extends StatelessWidget {
             hintText: 'Ex. Cité Keur Gorgui',
             onChanged: (v) {
               f.cite = v;
-              f.touch();
-            },
-          ),
-          const SizedBox(height: 14),
-          const _Label('Zone / sous-quartier',
-              hint: 'Optionnel — ex. Liberté 6'),
-          _Field(
-            initial: f.zone,
-            onChanged: (v) {
-              f.zone = v;
               f.touch();
             },
           ),

@@ -62,6 +62,13 @@ GoRouter buildRouter(AuthService auth) {
                 path: ':id',
                 builder: (_, s) =>
                     FicheBienPage(id: s.pathParameters['id']!),
+                routes: [
+                  GoRoute(
+                    path: 'publier',
+                    builder: (_, s) => NouvelleAnnoncePage(
+                        completerId: s.pathParameters['id']),
+                  ),
+                ],
               ),
             ],
           ),

@@ -160,6 +160,8 @@ class _ContentState extends State<_Content> {
         onArchive: _archive,
         onEdit: () => _snack(
             'La modification depuis le web arrive bientôt. Pour l\'instant, modifiez via l\'app Zappart.'),
+        onPublish:
+            h.prive ? () => context.go('/parc/${h.id}/publier') : null,
       );
       return wide
           ? Row(
@@ -422,10 +424,12 @@ class _ActionsPanel extends StatelessWidget {
     required this.onToggle,
     required this.onArchive,
     required this.onEdit,
+    this.onPublish,
   });
   final House house;
   final bool busy;
   final VoidCallback onToggle, onArchive, onEdit;
+  final VoidCallback? onPublish;
 
   @override
   Widget build(BuildContext context) {
@@ -495,12 +499,27 @@ class _ActionsPanel extends StatelessWidget {
           title: 'Actions',
           child: Column(
             children: [
-              _ActionBtn(
-                icon: Icons.edit_outlined,
-                label: 'Modifier l\'annonce',
-                onTap: onEdit,
-              ),
-              const SizedBox(height: 8),
+              if (onPublish != null) ...[
+                _ActionBtn(
+                  icon: Icons.publish_outlined,
+                  label: 'Compléter et publier',
+                  onTap: onPublish,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Ce bien est enregistré pour votre gérance (loué, non publié). '
+                  'Ajoutez photos et description pour le proposer sur la marketplace.',
+                  style: TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
+                ),
+                const SizedBox(height: 12),
+              ] else ...[
+                _ActionBtn(
+                  icon: Icons.edit_outlined,
+                  label: 'Modifier l\'annonce',
+                  onTap: onEdit,
+                ),
+                const SizedBox(height: 8),
+              ],
               _ActionBtn(
                 icon: Icons.inventory_2_outlined,
                 label: 'Archiver le bien',
