@@ -44,6 +44,8 @@ class FicheBailPage extends StatelessWidget {
                 builder: (context, sSnap) => _Content(
                   bail: bail,
                   echeances: eSnap.data ?? const [],
+                  echeancesErreur:
+                      eSnap.hasError ? eSnap.error.toString() : null,
                   depenses: dSnap.data ?? const [],
                   signalements: sSnap.data ?? const [],
                   repo: repo,
@@ -89,6 +91,7 @@ class _Content extends StatelessWidget {
   const _Content({
     required this.bail,
     required this.echeances,
+    this.echeancesErreur,
     required this.depenses,
     required this.signalements,
     required this.repo,
@@ -96,6 +99,7 @@ class _Content extends StatelessWidget {
   });
   final Bail bail;
   final List<Echeance> echeances;
+  final String? echeancesErreur;
   final List<Depense> depenses;
   final List<SignalementLoyer> signalements;
   final BailRepository repo;
@@ -249,7 +253,35 @@ class _Content extends StatelessWidget {
       trailing: Text('$paye payés · $du dû · $retard retard',
           style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft)),
       child: Column(
-        children: [for (final e in echeances) _echRow(context, e)],
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (echeancesErreur != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFBF2F0),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Impossible de charger l\'échéancier.\n$echeancesErreur\n\n'
+                'Si l\'erreur parle de « permission », les règles Firestore '
+                'ne sont pas à jour : redéployez-les.',
+                style: const TextStyle(fontSize: 11.5, color: Color(0xFF8A4033)),
+              ),
+            )
+          else if (echeances.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Aucune échéance. Elles sont générées à la création du bail — '
+                'si ce bail a été créé avant une mise à jour, recréez-le.',
+                style: TextStyle(fontSize: 12.5, color: AppTheme.inkSoft),
+              ),
+            )
+          else
+            for (final e in echeances) _echRow(context, e),
+        ],
       ),
     );
   }
@@ -710,11 +742,24 @@ class _Content extends StatelessWidget {
 
   Widget _locataire() => AppCard(
         title: 'Locataire',
-        child: Text(
-          bail.locataireLie
-              ? 'Compte Zappart lié — le locataire voit ses quittances et peut payer en ligne.'
-              : 'Pas de compte Zappart. Envoyez-lui la quittance par WhatsApp / e-mail ; vous pourrez l\'inviter à créer un compte.',
-          style: const TextStyle(fontSize: 12.5, color: AppTheme.inkSoft),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(bail.locataireNom,
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(bail.locataireTel,
+                style: const TextStyle(fontSize: 12.5, color: AppTheme.inkSoft)),
+            const SizedBox(height: 8),
+            Text(
+              bail.locataireTelCanonique.isEmpty
+                  ? 'Numéro non renseigné — le locataire ne pourra pas suivre son bail dans l\'app.'
+                  : 'Le locataire retrouve ce bail dans l\'app Zappart s\'il utilise le numéro '
+                      '${bail.locataireTel} (vérifié par SMS). Il y voit son échéancier et '
+                      'peut déclarer ses paiements${bail.encaissementMode == EncaissementMode.zappart ? ' ou payer en ligne' : ''}.',
+              style: const TextStyle(fontSize: 12, color: AppTheme.inkSoft),
+            ),
+          ],
         ),
       );
 
