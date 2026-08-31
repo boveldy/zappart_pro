@@ -11,16 +11,15 @@ import 'package:intl/intl.dart';
 /// (`statutAffiche`) tant que le loyer n'est pas explicitement `paye` /
 /// `partiel` — pas besoin de cron pour l'affichage.
 
-/// Canonicalise un numéro sénégalais en E.164 (`+221XXXXXXXXX`).
+/// Canonicalise un numéro sénégalais vers `221XXXXXXXXX` (indicatif SANS `+`).
 /// Sert de clé de liaison avec le `phone_number` (vérifié OTP) du locataire.
+/// ⚠️ DOIT rester strictement identique à `_normaliser` (backend
+/// `services/otp.py`) et `normalizePhone` (app officielle `core/constants.dart`).
 String canonPhone(String raw) {
-  var d = raw.replaceAll(RegExp(r'[^0-9]'), '');
-  if (d.isEmpty) return '';
+  var d = raw.replaceAll(RegExp(r'\D'), '');
   if (d.startsWith('00')) d = d.substring(2);
-  if (d.startsWith('221')) d = d.substring(3);
-  d = d.replaceFirst(RegExp(r'^0+'), '');
-  if (d.length == 9) return '+221$d';
-  return '+$d';
+  if (d.length == 9 && d.startsWith('7')) d = '221$d';
+  return d;
 }
 
 enum EncaissementMode { direct, zappart }
