@@ -458,6 +458,13 @@ class BailRepository {
         'created_at': FieldValue.serverTimestamp(),
       });
 
+  /// Toutes les dépenses du partenaire (relevé par propriétaire).
+  Stream<List<Depense>> depenses() => _depenses
+      .where('partenaire_ref', isEqualTo: partenaireRef)
+      .limit(1000)
+      .snapshots()
+      .map((s) => s.docs.map(Depense.fromDoc).toList());
+
   Future<void> supprimerDepense(String id) => _depenses.doc(id).delete();
 
   // ── Clôture de bail + solde de caution ────────────────────────────────────

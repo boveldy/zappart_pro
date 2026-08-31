@@ -106,6 +106,187 @@ class BailReleve {
     }
   }
 
+  /// Relevé consolidé de tous les baux d'un même propriétaire sur une période.
+  /// `echeances` et `depenses` sont les listes complètes du partenaire ; le
+  /// filtrage par bail se fait ici.
+  static Future<void> parProprietaire({
+    required String proprietaire,
+    required List<Bail> baux,
+    required List<Echeance> echeances,
+    required List<Depense> depenses,
+    required String agence,
+    required DateTime debut,
+    required DateTime fin,
+    required String periodeLabel,
+    required bool excel,
+  }) async {
+    final lignes = <({Bail bail, List<Echeance> enc, List<Depense> dep, ({double loyers, double commission, double depProprio, double depLocataire, double net, int nbLoyers}) c})>[];
+    for (final b in baux) {
+      final enc = _encaissees(
+          echeances.where((e) => e.bailRefId == b.id).toList(), debut, fin);
+      final dep = _depPeriode(
+          depenses.where((d) => d.bailRefId == b.id).toList(), debut, fin);
+      lignes.add((bail: b, enc: enc, dep: dep, c: _calc(bail: b, enc: enc, dep: dep)));
+    }
+    final totLoyers = lignes.fold<double>(0, (a, l) => a + l.c.loyers);
+    final totComm = lignes.fold<double>(0, (a, l) => a + l.c.commission);
+    final totDep = lignes.fold<double>(0, (a, l) => a + l.c.depProprio);
+    final totNet = totLoyers - totComm - totDep;
+    final stamp = DateFormat('yyyyMMdd').format(DateTime.now());
+    final base = 'releve-proprietaire-${_slug(proprietaire)}-$stamp';
+
+    if (excel) {
+      final ex = Excel.createExcel();
+      const name = 'Relevé';
+      final s = ex[name];
+      ex.setDefaultSheet(name);
+      for (final k in ex.sheets.keys.where((k) => k != name).toList()) {
+        ex.delete(k);
+      }
+      s.appendRow([TextCellValue('Relevé de gérance — $agence')]);
+      s.appendRow([TextCellValue('Propriétaire'), TextCellValue(proprietaire)]);
+      s.appendRow([TextCellValue('Période'), TextCellValue(periodeLabel)]);
+      s.appendRow([TextCellValue('')]);
+      s.appendRow([
+        TextCellValue('Bien'),
+        TextCellValue('Locataire'),
+        TextCellValue('Loyers encaissés'),
+        TextCellValue('Commission'),
+        TextCellValue('Dépenses'),
+        TextCellValue('Net à reverser'),
+      ]);
+      for (final l in lignes) {
+        s.appendRow([
+          TextCellValue(l.bail.bienTitre),
+          TextCellValue(l.bail.locataireNom),
+          IntCellValue(l.c.loyers.round()),
+          IntCellValue(-l.c.commission.round()),
+          IntCellValue(-l.c.depProprio.round()),
+          IntCellValue(l.c.net.round()),
+        ]);
+      }
+      s.appendRow([TextCellValue('')]);
+      s.appendRow([
+        TextCellValue('TOTAL'),
+        TextCellValue(''),
+        IntCellValue(totLoyers.round()),
+        IntCellValue(-totComm.round()),
+        IntCellValue(-totDep.round()),
+        IntCellValue(totNet.round()),
+      ]);
+      downloadBytes('$base.xlsx', ex.save() ?? <int>[],
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return;
+    }
+
+    final doc = pw.Document();
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(38),
+      build: (ctx) => [
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+              pw.Text(agence,
+                  style: pw.TextStyle(
+                      fontSize: 15, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Gérance locative',
+                  style:
+                      const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+            ]),
+            pw.Container(
+              padding:
+                  const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.grey900,
+                borderRadius: pw.BorderRadius.circular(4),
+              ),
+              child: pw.Text('RELEVÉ PROPRIÉTAIRE',
+                  style: pw.TextStyle(
+                      fontSize: 9,
+                      color: PdfColors.white,
+                      fontWeight: pw.FontWeight.bold)),
+            ),
+          ],
+        ),
+        pw.SizedBox(height: 6),
+        pw.Text('$proprietaire  ·  période : $periodeLabel',
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+        pw.Text('Édité le ${_dfLong.format(DateTime.now())} · via Zappart Pro',
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+        pw.SizedBox(height: 18),
+        pw.TableHelper.fromTextArray(
+          headers: const [
+            'Bien',
+            'Locataire',
+            'Loyers',
+            'Commission',
+            'Dépenses',
+            'Net à reverser'
+          ],
+          data: [
+            for (final l in lignes)
+              [
+                l.bail.bienTitre,
+                l.bail.locataireNom,
+                _fmt.format(l.c.loyers.round()),
+                '− ${_fmt.format(l.c.commission.round())}',
+                '− ${_fmt.format(l.c.depProprio.round())}',
+                _fmt.format(l.c.net.round()),
+              ],
+          ],
+          headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+          cellStyle: const pw.TextStyle(fontSize: 8.5),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+          cellAlignments: {
+            2: pw.Alignment.centerRight,
+            3: pw.Alignment.centerRight,
+            4: pw.Alignment.centerRight,
+            5: pw.Alignment.centerRight,
+          },
+        ),
+        pw.SizedBox(height: 16),
+        pw.Container(
+          padding: const pw.EdgeInsets.all(14),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.grey100,
+            borderRadius: pw.BorderRadius.circular(6),
+          ),
+          child: pw.Column(children: [
+            _totLine('Loyers encaissés', totLoyers),
+            _totLine('Commission de gérance', -totComm),
+            _totLine('Dépenses à la charge du propriétaire', -totDep),
+            pw.Divider(),
+            _totLine('NET À REVERSER', totNet, bold: true),
+          ]),
+        ),
+      ],
+    ));
+    downloadBytes('$base.pdf', await doc.save(), 'application/pdf');
+  }
+
+  static pw.Widget _totLine(String l, double v, {bool bold = false}) =>
+      pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 3),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(l,
+                style: pw.TextStyle(
+                    fontSize: bold ? 12 : 10.5,
+                    fontWeight:
+                        bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
+            pw.Text('${_fmt.format(v.round())} FCFA',
+                style: pw.TextStyle(
+                    fontSize: bold ? 12 : 10.5,
+                    fontWeight:
+                        bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
+          ],
+        ),
+      );
+
   // ── PDF ──────────────────────────────────────────────────────────────────
   static Future<List<int>> _pdf(
     Bail bail,

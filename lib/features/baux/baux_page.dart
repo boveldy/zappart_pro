@@ -7,6 +7,7 @@ import '../../core/ui.dart';
 import '../../data/bail.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import 'bail_releve.dart';
 
 /// Liste des baux du partenaire + file des loyers en retard.
 class BauxPage extends StatefulWidget {
@@ -33,7 +34,11 @@ class _BauxPageState extends State<BauxPage> {
     }
     final repo = BailRepository(ref);
 
-    return StreamBuilder<List<Echeance>>(
+    return StreamBuilder<List<Depense>>(
+      stream: repo.depenses(),
+      builder: (context, dSnap) {
+        final deps = dSnap.data ?? const <Depense>[];
+        return StreamBuilder<List<Echeance>>(
       stream: repo.echeances(),
       builder: (context, eSnap) {
         final ech = eSnap.data ?? const <Echeance>[];
@@ -65,6 +70,26 @@ class _BauxPageState extends State<BauxPage> {
                   ? null
                   : '$actifs bail${actifs > 1 ? 's' : ''} actif${actifs > 1 ? 's' : ''}',
               actions: [
+                if ((all ?? const <Bail>[])
+                    .any((b) => b.proprietaireNom.isNotEmpty))
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: OutlinedButton(
+                      onPressed: () => _openRelevePart(
+                          context, all ?? const [], ech, deps),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.ink,
+                        side: const BorderSide(color: AppTheme.line),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        textStyle: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      child: const Text('Relevé par propriétaire'),
+                    ),
+                  ),
                 FilledButton(
                   onPressed: () => context.go('/baux/nouveau'),
                   style: FilledButton.styleFrom(
@@ -107,6 +132,8 @@ class _BauxPageState extends State<BauxPage> {
             );
           },
         );
+      },
+    );
       },
     );
   }
@@ -163,6 +190,24 @@ class _BauxPageState extends State<BauxPage> {
     );
   }
 
+  Future<void> _openRelevePart(
+    BuildContext context,
+    List<Bail> baux,
+    List<Echeance> echeances,
+    List<Depense> depenses,
+  ) async {
+    final agence = context.read<AuthService>().displayName;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _RelevePartDialog(
+        baux: baux,
+        echeances: echeances,
+        depenses: depenses,
+        agence: agence,
+      ),
+    );
+  }
+
   Echeance? _prochaine(List<Echeance> l) {
     final ouvertes = l
         .where((e) => e.statutBrut != 'paye' && e.statutBrut != 'annule')
@@ -185,9 +230,11 @@ class _BauxPageState extends State<BauxPage> {
 
   Widget _row({required Bail b, required Echeance? prochaine}) {
     final st = prochaine?.statutAffiche();
-    final badge = st == null
-        ? (label: 'Soldé', tone: 'ok')
-        : eStatutBadge(st);
+    final badge = b.termine
+        ? (label: b.finMotifLabel, tone: 'muted')
+        : st == null
+            ? (label: 'Soldé', tone: 'ok')
+            : eStatutBadge(st);
     final retard = prochaine?.joursDeRetard();
 
     return InkWell(
@@ -241,13 +288,19 @@ class _BauxPageState extends State<BauxPage> {
             Expanded(
               flex: 3,
               child: Text(
-                prochaine?.dateEcheance == null
-                    ? '—'
-                    : '${_df.format(prochaine!.dateEcheance!)}'
-                        '${retard != null ? '  ·  +$retard j' : ''}',
+                b.termine
+                    ? (b.finDate == null
+                        ? 'Clôturé'
+                        : 'Fin : ${_df.format(b.finDate!)}')
+                    : prochaine?.dateEcheance == null
+                        ? '—'
+                        : '${_df.format(prochaine!.dateEcheance!)}'
+                            '${retard != null ? '  ·  +$retard j' : ''}',
                 style: TextStyle(
                     fontSize: 12.5,
-                    color: retard != null ? const Color(0xFF8A4033) : AppTheme.ink),
+                    color: retard != null
+                        ? const Color(0xFF8A4033)
+                        : AppTheme.inkSoft),
               ),
             ),
             Expanded(
@@ -343,4 +396,225 @@ class _FilterBar extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Dialogue « Relevé par propriétaire » ───────────────────────────────────
+
+enum _PPeriode { moisEnCours, moisDernier, trimestre, annee, tout }
+
+class _RelevePartDialog extends StatefulWidget {
+  const _RelevePartDialog({
+    required this.baux,
+    required this.echeances,
+    required this.depenses,
+    required this.agence,
+  });
+  final List<Bail> baux;
+  final List<Echeance> echeances;
+  final List<Depense> depenses;
+  final String agence;
+
+  @override
+  State<_RelevePartDialog> createState() => _RelevePartDialogState();
+}
+
+class _RelevePartDialogState extends State<_RelevePartDialog> {
+  String? _prop;
+  _PPeriode _p = _PPeriode.moisEnCours;
+  bool _excel = false;
+  bool _busy = false;
+
+  List<String> get _proprios {
+    final s = <String>{
+      for (final b in widget.baux)
+        if (b.proprietaireNom.isNotEmpty) b.proprietaireNom,
+    }.toList()
+      ..sort();
+    return s;
+  }
+
+  ({DateTime debut, DateTime fin, String label}) _bornes() {
+    final now = DateTime.now();
+    switch (_p) {
+      case _PPeriode.moisEnCours:
+        return (
+          debut: DateTime(now.year, now.month, 1),
+          fin: DateTime(now.year, now.month + 1, 0),
+          label: DateFormat('MMMM yyyy', 'fr').format(now),
+        );
+      case _PPeriode.moisDernier:
+        final m = DateTime(now.year, now.month - 1, 1);
+        return (
+          debut: m,
+          fin: DateTime(m.year, m.month + 1, 0),
+          label: DateFormat('MMMM yyyy', 'fr').format(m),
+        );
+      case _PPeriode.trimestre:
+        return (
+          debut: DateTime(now.year, now.month - 2, 1),
+          fin: DateTime(now.year, now.month + 1, 0),
+          label: '3 derniers mois',
+        );
+      case _PPeriode.annee:
+        return (
+          debut: DateTime(now.year, 1, 1),
+          fin: DateTime(now.year, 12, 31),
+          label: 'Année ${now.year}',
+        );
+      case _PPeriode.tout:
+        return (
+          debut: DateTime(2020),
+          fin: DateTime(now.year + 1),
+          label: 'Depuis le début',
+        );
+    }
+  }
+
+  Future<void> _go() async {
+    final prop = _prop;
+    if (prop == null) return;
+    setState(() => _busy = true);
+    final b = _bornes();
+    try {
+      await BailReleve.parProprietaire(
+        proprietaire: prop,
+        baux: widget.baux.where((x) => x.proprietaireNom == prop).toList(),
+        echeances: widget.echeances,
+        depenses: widget.depenses,
+        agence: widget.agence,
+        debut: b.debut,
+        fin: b.fin,
+        periodeLabel: b.label,
+        excel: _excel,
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Génération impossible.')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = {
+      _PPeriode.moisEnCours: 'Mois en cours',
+      _PPeriode.moisDernier: 'Mois dernier',
+      _PPeriode.trimestre: '3 derniers mois',
+      _PPeriode.annee: 'Année civile',
+      _PPeriode.tout: 'Depuis le début',
+    };
+    _prop ??= _proprios.isEmpty ? null : _proprios.first;
+
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      title: const Text('Relevé par propriétaire', style: TextStyle(fontSize: 16)),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _lbl('Propriétaire'),
+            Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppTheme.line),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _prop,
+                  isExpanded: true,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.ink),
+                  items: [
+                    for (final p in _proprios)
+                      DropdownMenuItem(value: p, child: Text(p)),
+                  ],
+                  onChanged: (v) => setState(() => _prop = v),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _lbl('Période'),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final e in labels.entries)
+                  GestureDetector(
+                    onTap: () => setState(() => _p = e.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _p == e.key ? AppTheme.ink : Colors.white,
+                        border: Border.all(
+                            color: _p == e.key ? AppTheme.ink : AppTheme.line),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(e.value,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _p == e.key
+                                  ? Colors.white
+                                  : AppTheme.ink)),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _lbl('Format'),
+            Row(children: [
+              _fmtPill('PDF', !_excel, () => setState(() => _excel = false)),
+              const SizedBox(width: 8),
+              _fmtPill('Excel', _excel, () => setState(() => _excel = true)),
+            ]),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context),
+            child: const Text('Annuler')),
+        ElevatedButton(
+          onPressed: _busy || _prop == null ? null : _go,
+          child: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : const Text('Télécharger'),
+        ),
+      ],
+    );
+  }
+
+  Widget _fmtPill(String label, bool on, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: on ? AppTheme.ink : Colors.white,
+            border: Border.all(color: on ? AppTheme.ink : AppTheme.line),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: on ? Colors.white : AppTheme.ink)),
+        ),
+      );
+
+  Widget _lbl(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(t,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+      );
 }
