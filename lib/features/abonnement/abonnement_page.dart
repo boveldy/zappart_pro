@@ -62,8 +62,8 @@ class _AbonnementPageState extends State<AbonnementPage> {
         return PageScaffold(
           title: 'Mon abonnement',
           subtitle: 'Forfait, quota de baux et options',
-          child: ListView(
-            padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (ref == null)
                 const AppCard(
