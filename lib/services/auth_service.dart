@@ -12,11 +12,16 @@ enum ProAccess {
   /// Connecté mais le doc `users/{uid}` n'a pas encore chargé.
   loading,
 
-  /// Connecté, aucun `partenaire_ref` → compte non habilité (particulier, ou
-  /// fiche partenaire pas encore liée par le trigger backend).
+  /// Connecté, aucun `partenaire_ref` → aucune fiche partenaire : il faut
+  /// remplir la demande d'inscription.
   notPartner,
 
-  /// Connecté + fiche partenaire liée → accès autorisé.
+  /// Connecté, fiche partenaire créée mais pas encore activée par l'admin
+  /// (`actif: false` → `est_hote`/`est_prestataire` encore faux). Demande en
+  /// cours de validation, ou fiche archivée.
+  pending,
+
+  /// Connecté + fiche partenaire liée ET activée → accès autorisé.
   partner,
 }
 
@@ -56,7 +61,77 @@ class AuthService extends ChangeNotifier {
   ProAccess get access {
     if (_user == null) return ProAccess.loggedOut;
     if (!_userDocLoaded) return ProAccess.loading;
-    return partenaireRef != null ? ProAccess.partner : ProAccess.notPartner;
+    if (partenaireRef == null) return ProAccess.notPartner;
+    // `est_hote` / `est_prestataire` ne passent à true que quand l'admin active
+    // la fiche (`actif: true`) — cf. trigger `partenaire_link.py`. Tant que
+    // c'est faux, la demande est en cours de validation (ou la fiche a été
+    // archivée).
+    if (!estHote && !estPrestataire) return ProAccess.pending;
+    return ProAccess.partner;
+  }
+
+  String get email => _user?.email ?? '';
+
+  /// Crée la demande de partenariat en self-service (web). Écrit directement
+  /// dans Firestore, exactement comme le wizard mobile
+  /// (`devenir_partenaire_model.dart`) : fiche `Partenaires` toujours
+  /// `statut_demande: 'en_attente'` / `actif: false`, avec `user_ref` vers le
+  /// compte connecté (c'est ce lien que le trigger `link_user_from_partenaire`
+  /// suit pour poser `users.partenaire_ref`). L'admin valide ensuite dans
+  /// zappart_admin (`actif: true` → accès complet).
+  ///
+  /// Retourne `null` si succès, sinon un message d'erreur lisible.
+  Future<String?> submitPartenaireRequest({
+    required bool service,
+    required String typePartenaire, // 'Agence' | 'Gérant' | ... ou 'Prestataire'
+    String? typeService, // code métier si service (Demenageur, Plombier, …)
+    required String nom,
+    required String prenom,
+    String nomAgence = '',
+    required String telephone,
+    required String ville,
+    int nombreBiens = 1,
+    int nombreAgent = 1,
+    String descriptionCourte = '',
+  }) async {
+    final u = _user;
+    if (u == null) return 'Votre session a expiré. Reconnectez-vous.';
+    try {
+      final userRef = _db.collection('users').doc(u.uid);
+      // S'assure que le profil existe (compte Google tout neuf sur le web).
+      await userRef.set({
+        if ((u.email ?? '').isNotEmpty) 'email': u.email,
+        if ((u.displayName ?? '').isNotEmpty) 'display_name': u.displayName,
+      }, SetOptions(merge: true));
+
+      await _db.collection('Partenaires').add(<String, dynamic>{
+        'typepartenaire': service ? 'Prestataire' : typePartenaire,
+        if (service && (typeService ?? '').isNotEmpty) 'typeservice': typeService,
+        'nom': nom.trim(),
+        'prenom': prenom.trim(),
+        if (nomAgence.trim().isNotEmpty) 'nomAgence': nomAgence.trim(),
+        'telephone': telephone.trim(),
+        if (email.isNotEmpty) 'email': email.trim(),
+        'localisationTexte': ville.trim(),
+        if (!service) 'nombreBiens': nombreBiens,
+        if (service) 'descriptionCourte': descriptionCourte.trim(),
+        if (service && nombreAgent > 1) 'nombreAgent': nombreAgent,
+        'type_activite': service ? 'service' : 'hote',
+        'user_ref': userRef,
+        'statut_demande': 'en_attente',
+        'actif': false,
+        'canal': 'web',
+        'createdDate': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        return 'Demande refusée par le serveur. Reconnectez-vous et réessayez.';
+      }
+      return 'Erreur (${e.code}). Vérifiez votre connexion et réessayez.';
+    } catch (_) {
+      return 'Une erreur est survenue. Vérifiez votre connexion et réessayez.';
+    }
   }
 
   void _onAuthChanged(User? u) {

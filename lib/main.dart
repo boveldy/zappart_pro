@@ -47,8 +47,13 @@ class _ZappartProAppState extends State<ZappartProApp> {
         routerConfig: _router,
         builder: (context, child) {
           // Zappart Pro = outil de bureau. Sous 720 px, page d'information
-          // (provisoire) au lieu de l'app.
-          if (MediaQuery.sizeOf(context).width < 720) {
+          // (provisoire) au lieu de l'app — SAUF les écrans d'accès
+          // (connexion / inscription), qui doivent marcher sur téléphone
+          // puisque le site public y renvoie.
+          final path = Uri.base.path;
+          final authRoute =
+              path.endsWith('/login') || path.endsWith('/inscription');
+          if (MediaQuery.sizeOf(context).width < 720 && !authRoute) {
             return const MobileBlockedPage();
           }
           return child ?? const SizedBox.shrink();

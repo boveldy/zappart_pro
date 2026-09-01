@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/devenir_partenaire_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/baux/baux_page.dart';
 import '../features/baux/fiche_bail_page.dart';
@@ -32,11 +33,14 @@ GoRouter buildRouter(AuthService auth) {
         case ProAccess.loading:
           return loc == '/loading' ? null : '/loading';
         case ProAccess.loggedOut:
-          return loc == '/login' ? null : '/login';
+          // La page d'inscription gère elle-même le cas « pas connecté »
+          // (boutons Google / Apple) → on l'autorise.
+          return (loc == '/login' || loc == '/inscription') ? null : '/login';
         case ProAccess.notPartner:
-          return loc == '/no-access' ? null : '/no-access';
+        case ProAccess.pending:
+          return loc == '/inscription' ? null : '/inscription';
         case ProAccess.partner:
-          if (loc == '/login' || loc == '/loading' || loc == '/no-access') {
+          if (loc == '/login' || loc == '/loading' || loc == '/inscription') {
             return '/';
           }
           return null;
@@ -45,6 +49,10 @@ GoRouter buildRouter(AuthService auth) {
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(path: '/loading', builder: (_, __) => const _Splash()),
+      GoRoute(
+        path: '/inscription',
+        builder: (_, __) => const DevenirPartenairePage(),
+      ),
       GoRoute(path: '/no-access', builder: (_, __) => const NotPartnerPage()),
       ShellRoute(
         builder: (_, __, child) => AppShell(child: child),

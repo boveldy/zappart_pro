@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -448,12 +449,29 @@ class _FormPanel extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Center(
-                child: Text(
-                  'Pas encore partenaire ? Rejoignez Zappart depuis '
-                  'l\'application mobile.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.mavenPro(
-                      fontSize: 11.5, color: AppTheme.inkSoft),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      'Pas encore partenaire ?',
+                      style: GoogleFonts.mavenPro(
+                          fontSize: 12, color: AppTheme.inkSoft),
+                    ),
+                    TextButton(
+                      onPressed: () => GoRouter.of(context).go('/inscription'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text('Créer un compte',
+                          style: GoogleFonts.mavenPro(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.ink)),
+                    ),
+                  ],
                 ),
               ),
             ],
