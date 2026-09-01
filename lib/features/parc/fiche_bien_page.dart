@@ -11,6 +11,7 @@ import '../../data/house.dart';
 import '../../data/stats_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../abonnement/abonnement_page.dart';
 
 class FicheBienPage extends StatelessWidget {
   const FicheBienPage({super.key, required this.id});
@@ -147,10 +148,17 @@ class _ContentState extends State<_Content> {
           const SizedBox(height: 16),
           _InfoBlock(house: h),
           const SizedBox(height: 16),
-          _PerformanceCard(
-            houseId: h.id,
-            partenaireRef: widget.repo.partenaireRef,
-          ),
+          if (context.watch<AuthService>().abonnement.statsIncluses)
+            _PerformanceCard(
+              houseId: h.id,
+              partenaireRef: widget.repo.partenaireRef,
+            )
+          else
+            const AboUpsell(
+              titre: 'Performance de l\'annonce',
+              detail:
+                  'Vues, réservations et taux de conversion de ce bien.',
+            ),
         ],
       );
       final right = _ActionsPanel(

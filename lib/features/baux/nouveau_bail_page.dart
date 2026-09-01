@@ -383,6 +383,30 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
   Future<void> _submit(
       DocumentReference<Map<String, dynamic>> partenaireRef,
       List<House> parc) async {
+    // Garde de quota : recompte les baux actifs au moment de créer (le forfait
+    // peut avoir changé, ou l'onglet être resté ouvert).
+    final abo = context.read<AuthService>().abonnement;
+    if (abo.bloqueCreation) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Abonnement expiré — renouvelez pour créer un bail.')));
+      return;
+    }
+    if (abo.quotaBaux < 1000) {
+      final actifs = (await BailRepository(partenaireRef).baux().first)
+          .where((b) => b.actif)
+          .length;
+      if (actifs >= abo.quotaBaux && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Quota de ${abo.quotaBaux} baux atteint (forfait '
+              '${abo.label}).'),
+          action: SnackBarAction(
+            label: 'Forfaits',
+            onPressed: () => context.go('/abonnement'),
+          ),
+        ));
+        return;
+      }
+    }
     setState(() => _busy = true);
     try {
       final db = FirebaseFirestore.instance;

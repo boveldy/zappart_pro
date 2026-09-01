@@ -94,7 +94,26 @@ class _BauxPageState extends State<BauxPage> {
                     ),
                   ),
                 FilledButton(
-                  onPressed: () => context.go('/baux/nouveau'),
+                  onPressed: () {
+                    final abo = auth.abonnement;
+                    final quotaOk =
+                        abo.quotaBaux >= 1000 || actifs < abo.quotaBaux;
+                    if (!quotaOk || abo.bloqueCreation) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(abo.bloqueCreation
+                            ? 'Abonnement expiré — renouvelez pour créer un bail.'
+                            : 'Quota de ${abo.quotaBaux} baux atteint (forfait '
+                                '${abo.label}). Passez au forfait supérieur.'),
+                        action: SnackBarAction(
+                          label: 'Forfaits',
+                          textColor: Colors.white,
+                          onPressed: () => context.go('/abonnement'),
+                        ),
+                      ));
+                      return;
+                    }
+                    context.go('/baux/nouveau');
+                  },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.ink,
                     foregroundColor: Colors.white,

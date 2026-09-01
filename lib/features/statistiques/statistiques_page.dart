@@ -9,6 +9,7 @@ import '../../data/house.dart';
 import '../../data/stats_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../abonnement/abonnement_page.dart';
 
 /// Statistiques d'audience du parc : classement des biens par vues, totaux,
 /// tendance. Lit `annonce_stats` (1 requête) + les `Reservation` du partenaire.
@@ -32,6 +33,22 @@ class _StatistiquesPageState extends State<StatistiquesPage> {
       return const PageScaffold(
         title: 'Statistiques',
         child: EmptyState('Votre compte est prestataire — pas de parc à suivre.'),
+      );
+    }
+    // Vues d'annonces & statistiques : réservées à l'offre Agence et plus —
+    // évite de consommer des lectures Firestore pour les petits forfaits.
+    if (!auth.abonnement.statsIncluses) {
+      return const PageScaffold(
+        title: 'Statistiques',
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: AboUpsell(
+            titre: 'Statistiques d\'audience',
+            detail:
+                'Vues par annonce, classement du parc, tendance et taux de '
+                'conversion des visites.',
+          ),
+        ),
       );
     }
     final houseRepo = HouseRepository(ref);

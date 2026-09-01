@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/abonnement/abonnement_page.dart';
 import '../features/auth/devenir_partenaire_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/baux/baux_page.dart';
@@ -109,6 +110,10 @@ GoRouter buildRouter(AuthService auth) {
           GoRoute(
             path: '/statistiques',
             builder: (_, __) => const StatistiquesPage(),
+          ),
+          GoRoute(
+            path: '/abonnement',
+            builder: (_, __) => const AbonnementPage(),
           ),
           GoRoute(
             path: '/parametres',

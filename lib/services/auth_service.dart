@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import 'abonnement.dart';
+
 /// État d'accès d'un compte à Zappart Pro.
 enum ProAccess {
   /// Pas connecté.
@@ -39,10 +41,13 @@ class AuthService extends ChangeNotifier {
 
   StreamSubscription<User?>? _authSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _partDocSub;
 
   User? _user;
   Map<String, dynamic>? _userDoc;
   bool _userDocLoaded = false;
+  Map<String, dynamic>? _partDoc;
+  String? _partDocPath;
 
   User? get user => _user;
   DocumentReference<Map<String, dynamic>>? get partenaireRef {
@@ -52,6 +57,11 @@ class AuthService extends ChangeNotifier {
 
   bool get estHote => _userDoc?['est_hote'] == true;
   bool get estPrestataire => _userDoc?['est_prestataire'] == true;
+
+  /// Abonnement du partenaire (champs `abo_*` sur la fiche `Partenaires`).
+  /// « Découverte » tant que la fiche n'est pas chargée.
+  Abonnement get abonnement => Abonnement.fromPartenaire(_partDoc);
+  Map<String, dynamic>? get partenaireDoc => _partDoc;
 
   String get displayName =>
       (_userDoc?['display_name'] as String?)?.trim().isNotEmpty == true
@@ -137,6 +147,10 @@ class AuthService extends ChangeNotifier {
     _userDocLoaded = false;
     _userDocSub?.cancel();
     _userDocSub = null;
+    _partDocSub?.cancel();
+    _partDocSub = null;
+    _partDoc = null;
+    _partDocPath = null;
 
     if (u != null) {
       _userDocSub = _db
@@ -146,6 +160,7 @@ class AuthService extends ChangeNotifier {
           .listen((snap) {
         _userDoc = snap.data();
         _userDocLoaded = true;
+        _syncPartenaireSub();
         notifyListeners();
       }, onError: (_) {
         _userDocLoaded = true;
@@ -153,6 +168,23 @@ class AuthService extends ChangeNotifier {
       });
     }
     notifyListeners();
+  }
+
+  /// (Re)abonne au doc `Partenaires` pointé par `partenaire_ref` — pour lire
+  /// l'abonnement (`abo_*`) en temps réel. Ne resouscrit que si la référence
+  /// a changé.
+  void _syncPartenaireSub() {
+    final ref = partenaireRef;
+    if (ref?.path == _partDocPath) return;
+    _partDocSub?.cancel();
+    _partDocSub = null;
+    _partDocPath = ref?.path;
+    _partDoc = null;
+    if (ref == null) return;
+    _partDocSub = ref.snapshots().listen((snap) {
+      _partDoc = snap.data();
+      notifyListeners();
+    }, onError: (_) {});
   }
 
   Future<void> signInWithEmail(String email, String password) {
@@ -191,6 +223,7 @@ class AuthService extends ChangeNotifier {
   void dispose() {
     _authSub?.cancel();
     _userDocSub?.cancel();
+    _partDocSub?.cancel();
     super.dispose();
   }
 }

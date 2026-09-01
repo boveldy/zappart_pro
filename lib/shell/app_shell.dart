@@ -24,6 +24,7 @@ const kNavItems = <NavItem>[
   NavItem('/reservations', 'Réservations', Icons.event_available_outlined),
   NavItem('/revenus', 'Revenus', Icons.account_balance_wallet_outlined),
   NavItem('/statistiques', 'Statistiques', Icons.insights_outlined),
+  NavItem('/abonnement', 'Abonnement', Icons.workspace_premium_outlined),
   NavItem('/parametres', 'Paramètres', Icons.settings_outlined),
 ];
 
