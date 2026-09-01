@@ -30,12 +30,11 @@ class _DevenirPartenairePageState extends State<DevenirPartenairePage> {
   final _nomAgence = TextEditingController();
   final _tel = TextEditingController();
   final _ville = TextEditingController();
-  final _desc = TextEditingController();
 
-  bool _service = false; // false = loue des logements, true = prestataire
-  String _sousType = ''; // 'Agence'|'Gérant'|... ou code métier service
+  // Zappart Pro = logiciel de gérance → uniquement des hôtes. Les prestataires
+  // de services passent par l'app mobile / l'admin.
+  String _sousType = ''; // 'Agence' | 'Gérant' | 'Propriétaire' | 'Courtier' | 'Hotel'
   int _nombreBiens = 1;
-  int _nombreAgent = 1;
 
   bool _busy = false;
   bool _sent = false;
@@ -48,21 +47,12 @@ class _DevenirPartenairePageState extends State<DevenirPartenairePage> {
     'Courtier': 'Courtier',
     'Hôtel': 'Hotel',
   };
-  // libellé → code métier (identiques au hub admin `kServicePartners`)
-  static const _typesService = <String, String>{
-    'Déménagement': 'Demenageur',
-    'Nettoyage': 'Nettoyeur',
-    'Plomberie': 'Plombier',
-    'Électricité': 'Electricien',
-    'Peinture': 'Peintre',
-    'Autre': 'Installeur',
-  };
 
   bool get _needsRaisonSociale => _sousType == 'Agence' || _sousType == 'Hotel';
 
   @override
   void dispose() {
-    for (final c in [_nom, _prenom, _nomAgence, _tel, _ville, _desc]) {
+    for (final c in [_nom, _prenom, _nomAgence, _tel, _ville]) {
       c.dispose();
     }
     super.dispose();
@@ -115,17 +105,13 @@ class _DevenirPartenairePageState extends State<DevenirPartenairePage> {
       _error = null;
     });
     final err = await context.read<AuthService>().submitPartenaireRequest(
-          service: _service,
-          typePartenaire: _service ? 'Prestataire' : _sousType,
-          typeService: _service ? _sousType : null,
+          typePartenaire: _sousType,
           nom: _nom.text,
           prenom: _prenom.text,
           nomAgence: _nomAgence.text,
           telephone: _tel.text,
           ville: _ville.text,
           nombreBiens: _nombreBiens,
-          nombreAgent: _nombreAgent,
-          descriptionCourte: _desc.text,
         );
     if (!mounted) return;
     setState(() {
@@ -178,35 +164,20 @@ class _DevenirPartenairePageState extends State<DevenirPartenairePage> {
   }
 
   Widget _buildForm(AuthService auth) {
-    final options = _service ? _typesService : _typesHote;
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _Header(subtitle: 'Créez votre espace de gestion.'),
+          const _Header(subtitle: 'Créez votre espace de gérance locative.'),
           const SizedBox(height: 26),
-          Text('Votre activité',
-              style: GoogleFonts.mavenPro(
-                  fontSize: 13, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          _Segmented(
-            left: 'Je loue des logements',
-            right: 'Je propose un service',
-            value: _service,
-            onChanged: (v) => setState(() {
-              _service = v;
-              _sousType = '';
-            }),
-          ),
-          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _sousType.isEmpty ? null : _sousType,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Type'),
-            hint: Text(_service ? 'Métier' : 'Vous êtes…'),
+            decoration: const InputDecoration(labelText: 'Vous êtes…'),
+            hint: const Text('Agence, gérant, propriétaire…'),
             items: [
-              for (final e in options.entries)
+              for (final e in _typesHote.entries)
                 DropdownMenuItem(value: e.value, child: Text(e.key)),
             ],
             onChanged: (v) => setState(() => _sousType = v ?? ''),
@@ -261,30 +232,12 @@ class _DevenirPartenairePageState extends State<DevenirPartenairePage> {
                 (v == null || v.trim().isEmpty) ? 'Requis' : null,
           ),
           const SizedBox(height: 14),
-          if (!_service)
-            _Stepper(
-              label: 'Nombre de biens gérés',
-              value: _nombreBiens,
-              min: 1,
-              onChanged: (v) => setState(() => _nombreBiens = v),
-            )
-          else ...[
-            _Stepper(
-              label: 'Nombre d\'intervenants',
-              value: _nombreAgent,
-              min: 1,
-              onChanged: (v) => setState(() => _nombreAgent = v),
-            ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: _desc,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                  labelText: 'Décrivez votre activité en une phrase'),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Requis' : null,
-            ),
-          ],
+          _Stepper(
+            label: 'Nombre de biens gérés',
+            value: _nombreBiens,
+            min: 1,
+            onChanged: (v) => setState(() => _nombreBiens = v),
+          ),
           if (_error != null && _error!.isNotEmpty) ...[
             const SizedBox(height: 14),
             _ErrorRow(_error!),
@@ -480,58 +433,6 @@ class _Header extends StatelessWidget {
                   GoogleFonts.mavenPro(fontSize: 13, color: AppTheme.inkSoft)),
         ],
       ],
-    );
-  }
-}
-
-class _Segmented extends StatelessWidget {
-  const _Segmented({
-    required this.left,
-    required this.right,
-    required this.value,
-    required this.onChanged,
-  });
-  final String left;
-  final String right;
-  final bool value; // false = left, true = right
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget seg(String t, bool selected, VoidCallback onTap) => Expanded(
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: selected ? AppTheme.ink : Colors.transparent),
-              ),
-              child: Text(t,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.mavenPro(
-                      fontSize: 12.5,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected ? AppTheme.ink : AppTheme.inkSoft)),
-            ),
-          ),
-        );
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppTheme.panel,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(children: [
-        seg(left, !value, () => onChanged(false)),
-        const SizedBox(width: 4),
-        seg(right, value, () => onChanged(true)),
-      ]),
     );
   }
 }

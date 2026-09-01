@@ -73,26 +73,26 @@ class AuthService extends ChangeNotifier {
   String get email => _user?.email ?? '';
 
   /// Crée la demande de partenariat en self-service (web). Écrit directement
-  /// dans Firestore, exactement comme le wizard mobile
-  /// (`devenir_partenaire_model.dart`) : fiche `Partenaires` toujours
-  /// `statut_demande: 'en_attente'` / `actif: false`, avec `user_ref` vers le
-  /// compte connecté (c'est ce lien que le trigger `link_user_from_partenaire`
-  /// suit pour poser `users.partenaire_ref`). L'admin valide ensuite dans
-  /// zappart_admin (`actif: true` → accès complet).
+  /// dans Firestore, comme le wizard mobile (`devenir_partenaire_model.dart`) :
+  /// fiche `Partenaires` toujours `statut_demande: 'en_attente'` /
+  /// `actif: false`, avec `user_ref` vers le compte connecté (c'est ce lien que
+  /// le trigger `link_user_from_partenaire` suit pour poser
+  /// `users.partenaire_ref`). L'admin valide ensuite dans zappart_admin
+  /// (`actif: true` → accès complet).
+  ///
+  /// Zappart Pro = logiciel de gérance → uniquement des hôtes
+  /// (`type_activite: 'hote'`). Les prestataires de services passent par le
+  /// wizard mobile / l'admin, pas par cette inscription web.
   ///
   /// Retourne `null` si succès, sinon un message d'erreur lisible.
   Future<String?> submitPartenaireRequest({
-    required bool service,
-    required String typePartenaire, // 'Agence' | 'Gérant' | ... ou 'Prestataire'
-    String? typeService, // code métier si service (Demenageur, Plombier, …)
+    required String typePartenaire, // 'Agence' | 'Gérant' | 'Propriétaire' | ...
     required String nom,
     required String prenom,
     String nomAgence = '',
     required String telephone,
     required String ville,
     int nombreBiens = 1,
-    int nombreAgent = 1,
-    String descriptionCourte = '',
   }) async {
     final u = _user;
     if (u == null) return 'Votre session a expiré. Reconnectez-vous.';
@@ -105,18 +105,15 @@ class AuthService extends ChangeNotifier {
       }, SetOptions(merge: true));
 
       await _db.collection('Partenaires').add(<String, dynamic>{
-        'typepartenaire': service ? 'Prestataire' : typePartenaire,
-        if (service && (typeService ?? '').isNotEmpty) 'typeservice': typeService,
+        'typepartenaire': typePartenaire,
         'nom': nom.trim(),
         'prenom': prenom.trim(),
         if (nomAgence.trim().isNotEmpty) 'nomAgence': nomAgence.trim(),
         'telephone': telephone.trim(),
         if (email.isNotEmpty) 'email': email.trim(),
         'localisationTexte': ville.trim(),
-        if (!service) 'nombreBiens': nombreBiens,
-        if (service) 'descriptionCourte': descriptionCourte.trim(),
-        if (service && nombreAgent > 1) 'nombreAgent': nombreAgent,
-        'type_activite': service ? 'service' : 'hote',
+        'nombreBiens': nombreBiens,
+        'type_activite': 'hote',
         'user_ref': userRef,
         'statut_demande': 'en_attente',
         'actif': false,
