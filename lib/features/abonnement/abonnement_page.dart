@@ -210,7 +210,6 @@ class _CurrentPlanCard extends StatelessWidget {
                   style: GoogleFonts.mavenPro(
                       fontSize: 20, fontWeight: FontWeight.w800)),
               const SizedBox(width: 8),
-              if (abo.fondateur) const _Tag('Fondateur · −40 %'),
               const Spacer(),
               Text(
                 abo.estPayant

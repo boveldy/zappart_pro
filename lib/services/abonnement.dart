@@ -10,7 +10,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///                        (absent → 'decouverte')
 ///  - `abo_actif_jusqu` : Timestamp — échéance du forfait payant (absent pour
 ///                        Découverte = illimité)
-///  - `abo_fondateur`   : bool — tarif Fondateur (−40 % à vie)
 ///
 /// L'admin ne saisit que `abo_formule` (+ `abo_actif_jusqu` au paiement) ; le
 /// quota et les fonctionnalités en découlent.
@@ -20,12 +19,10 @@ class Abonnement {
   const Abonnement(
     this.formule, {
     this.actifJusqu,
-    this.fondateur = false,
   });
 
   final Formule formule;
   final DateTime? actifJusqu;
-  final bool fondateur;
 
   // ── Barème (aligné sur zappart-pro.html § Tarifs) ──
   static const _quota = <Formule, int>{
@@ -44,10 +41,7 @@ class Abonnement {
   };
 
   int get quotaBaux => _quota[formule]!;
-  int get prixMensuel {
-    final p = _prixLancement[formule]!;
-    return fondateur ? (p * 0.6).round() : p;
-  }
+  int get prixMensuel => _prixLancement[formule]!;
 
   String get label => switch (formule) {
         Formule.decouverte => 'Découverte',
@@ -99,7 +93,6 @@ class Abonnement {
       actifJusqu: d['abo_actif_jusqu'] is Timestamp
           ? (d['abo_actif_jusqu'] as Timestamp).toDate()
           : null,
-      fondateur: d['abo_fondateur'] == true,
     );
   }
 

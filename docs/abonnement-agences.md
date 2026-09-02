@@ -85,12 +85,16 @@ Modèle éco retenu : **abonnement agence, 0 % de commission Zappart sur les loy
 > FCFA/mois. Le « prix normal » sert d'ancrage (prix barré). Au lancement
 > personne ne le paie.
 
-| Plan | Baux actifs | Prix normal | **Prix lancement** | Cible |
-|---|---|---|---|---|
-| **Découverte** | 1 – **5** *(→ 1–3 plus tard)* | Gratuit | **Gratuit à vie** (inscrits avant le 31/03/2027) | gérant indépendant, agence qui teste |
-| **Essentiel** | jusqu'à **20** | ~~25 000~~ | **15 000** · Offre Fondateur | petite agence, 5–20 baux |
-| **Agence** | jusqu'à **75** | ~~60 000~~ | **35 000** · Offre Fondateur | agence établie |
-| **Grand compte** | 75+ | sur devis | à partir de **90 000** | réseau, multi-agences, multi-utilisateurs |
+> ⚠️ Grille indicative — la **source de vérité** est `lib/services/abonnement.dart`
+> (`_quota` / `_prixLancement`) et `zappart-pro.html`.
+
+| Plan | Baux actifs | Prix mensuel | Cible |
+|---|---|---|---|
+| **Découverte** | jusqu'à 3–5 | Gratuit | gérant indépendant, agence qui teste |
+| **Gérant** | jusqu'à 15 | 9 000 | petit portefeuille |
+| **Agence** | jusqu'à 40 | 25 000 | agence établie |
+| **Agence +** | jusqu'à 100 | 55 000 | agence multi-utilisateurs |
+| **Réseau** | 100+ | sur devis (dès 120 000) | multi-agences, franchise |
 
 **Option annuelle** : 2 mois offerts (payer 10, avoir 12).
 - Essentiel annuel : 150 000/an (= 12 500/mois)
@@ -163,18 +167,17 @@ aucun payout, aucun wallet.
   l'effet « app » sans 2ᵉ app native.
 - Aucune section gérance prévue dans l'app native (métier de bureau).
 
-### 2.7 Stratégie de lancement / promotions
-1. **Découverte généreux + grandfathering** : 5 baux gratuits au lancement
-   (vs 1–3 plus tard), **verrouillés à vie** pour les inscrits avant le
-   31/03/2027.
-2. **Prix Fondateur (lock-in)** : les **30 premières agences payantes** →
-   **-40 % à vie**, badge « Agence fondatrice », *« le tarif n'augmentera jamais
-   tant que l'abonnement reste actif »*.
-3. **Promo temps limité (tous)**, une seule à la fois : *3 premiers mois à -50 %*
-   OU *1 mois offert*, avec compte à rebours.
-4. **Annuel** : 2 mois offerts (payer 10, avoir 12) → cash-flow + fidélisation.
-5. **Parrainage inter-agences** : 1 mois offert chacune (cohérent avec le
-   parrainage « boîte mystère » côté client).
+### 2.7 Stratégie de lancement
+1. **Découverte généreux** : quota large au lancement (5 baux gratuits), à
+   resserrer plus tard.
+2. **Annuel** : 2 mois offerts (payer 10, avoir 12) → cash-flow + fidélisation.
+   Seule remise en place.
+
+> **Décision 2026-09-02** : on retire le tarif Fondateur (−40 % à vie), les
+> promos temps limité, le grandfathering verrouillé et le parrainage
+> inter-agences. Grille de prix unique, plus le rabais annuel. Champ
+> `abo_fondateur` supprimé du code (Pro + backend `paiement.py`) et de la page
+> marketing.
 
 ### 2.8 Frais de transaction (mode `zappart` uniquement — loyers, pas l'abo)
 Aujourd'hui non tracés → Zappart les absorbe (absurde à 0 % de commission).
