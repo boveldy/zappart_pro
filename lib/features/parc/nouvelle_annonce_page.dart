@@ -11,8 +11,10 @@ import '../../core/widgets/map_picker.dart';
 import '../../data/annonce_catalog.dart';
 import '../../data/annonce_form.dart';
 import '../../data/house.dart';
+import '../../data/immeuble.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import 'immeuble_sheet.dart';
 
 /// Wizard web d'ajout d'annonce (Zappart Pro). 7 écrans, navigation par boutons.
 /// La fiche part en `statut_validation: 'en_attente'` → file de validation admin.
@@ -510,6 +512,34 @@ class _StepLocalisation extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (f.hasImmeuble)
+            ImmeubleReadonlyCard(
+              nom: f.immeubleNom,
+              detail: f.immeubleDetail,
+              onDetach: () => f.clearImmeuble(),
+            )
+          else
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final im = await pickImmeuble(
+                      context, ImmeubleRepository(f.partenaireRef));
+                  if (im != null) f.applyImmeuble(im);
+                },
+                icon: const Icon(Icons.apartment_rounded, size: 16),
+                label: const Text('Ce bien est dans un immeuble ?'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.ink,
+                  side: const BorderSide(color: AppTheme.line),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          const SizedBox(height: 18),
           const _Label('Type de location'),
           _ChoiceChips(
             options: const ['Journalier', 'Mensuel'],
@@ -530,63 +560,65 @@ class _StepLocalisation extends StatelessWidget {
               f.touch();
             },
           ),
-          const SizedBox(height: 18),
-          const _Label('Quartier'),
-          DropdownButtonFormField<String>(
-            value: f.quartier.isEmpty ? null : f.quartier,
-            isExpanded: true,
-            hint: const Text('Choisir un quartier'),
-            items: [
-              for (final q in kQuartiers)
-                DropdownMenuItem(value: q.key, child: Text(q.label)),
-            ],
-            onChanged: (v) {
-              f.quartier = v ?? '';
-              f.zone = ''; // changer de quartier invalide la zone
-              f.touch();
-            },
-          ),
-          if (quartierADesZones(f.quartier)) ...[
-            const SizedBox(height: 14),
-            const _Label('Zone / sous-quartier',
-                hint: 'Ce quartier est découpé — précisez la zone'),
+          if (!f.hasImmeuble) ...[
+            const SizedBox(height: 18),
+            const _Label('Quartier'),
             DropdownButtonFormField<String>(
-              value: zonesDuQuartier(f.quartier)
-                      .any((z) => z.label == f.zone)
-                  ? f.zone
-                  : null,
+              value: f.quartier.isEmpty ? null : f.quartier,
               isExpanded: true,
-              hint: const Text('Choisir la zone'),
+              hint: const Text('Choisir un quartier'),
               items: [
-                for (final z in zonesDuQuartier(f.quartier))
-                  DropdownMenuItem(value: z.label, child: Text(z.label)),
+                for (final q in kQuartiers)
+                  DropdownMenuItem(value: q.key, child: Text(q.label)),
               ],
               onChanged: (v) {
-                f.zone = v ?? '';
+                f.quartier = v ?? '';
+                f.zone = ''; // changer de quartier invalide la zone
+                f.touch();
+              },
+            ),
+            if (quartierADesZones(f.quartier)) ...[
+              const SizedBox(height: 14),
+              const _Label('Zone / sous-quartier',
+                  hint: 'Ce quartier est découpé — précisez la zone'),
+              DropdownButtonFormField<String>(
+                value: zonesDuQuartier(f.quartier)
+                        .any((z) => z.label == f.zone)
+                    ? f.zone
+                    : null,
+                isExpanded: true,
+                hint: const Text('Choisir la zone'),
+                items: [
+                  for (final z in zonesDuQuartier(f.quartier))
+                    DropdownMenuItem(value: z.label, child: Text(z.label)),
+                ],
+                onChanged: (v) {
+                  f.zone = v ?? '';
+                  f.touch();
+                },
+              ),
+            ],
+            const SizedBox(height: 14),
+            const _Label('Cité / résidence'),
+            _Field(
+              initial: f.cite,
+              hintText: 'Ex. Cité Keur Gorgui',
+              onChanged: (v) {
+                f.cite = v;
+                f.touch();
+              },
+            ),
+            const SizedBox(height: 14),
+            const _Label('Adresse / point de repère'),
+            _Field(
+              initial: f.adresse,
+              hintText: 'Rue, immeuble, repère connu',
+              onChanged: (v) {
+                f.adresse = v;
                 f.touch();
               },
             ),
           ],
-          const SizedBox(height: 14),
-          const _Label('Cité / résidence'),
-          _Field(
-            initial: f.cite,
-            hintText: 'Ex. Cité Keur Gorgui',
-            onChanged: (v) {
-              f.cite = v;
-              f.touch();
-            },
-          ),
-          const SizedBox(height: 14),
-          const _Label('Adresse / point de repère'),
-          _Field(
-            initial: f.adresse,
-            hintText: 'Rue, immeuble, repère connu',
-            onChanged: (v) {
-              f.adresse = v;
-              f.touch();
-            },
-          ),
           const SizedBox(height: 14),
           const _Label('Étage', hint: 'Optionnel'),
           _ChoiceChips(
@@ -597,20 +629,22 @@ class _StepLocalisation extends StatelessWidget {
               f.touch();
             },
           ),
-          const SizedBox(height: 18),
-          const _Label('Position exacte sur la carte',
-              hint:
-                  'Recherchez l\'adresse ou touchez la carte. Obligatoire : la visite et le déménagement offert en dépendent.'),
-          MapPicker(
-            lat: f.geoLat,
-            lng: f.geoLng,
-            quartierKey: f.quartier,
-            onChanged: (lat, lng) {
-              f.geoLat = lat;
-              f.geoLng = lng;
-              f.touch();
-            },
-          ),
+          if (!f.hasImmeuble) ...[
+            const SizedBox(height: 18),
+            const _Label('Position exacte sur la carte',
+                hint:
+                    'Recherchez l\'adresse ou touchez la carte. Obligatoire : la visite et le déménagement offert en dépendent.'),
+            MapPicker(
+              lat: f.geoLat,
+              lng: f.geoLng,
+              quartierKey: f.quartier,
+              onChanged: (lat, lng) {
+                f.geoLat = lat;
+                f.geoLng = lng;
+                f.touch();
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -1052,6 +1086,25 @@ class _StepConcierge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (f.hasImmeuble) {
+      return AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _Label('Contact sur place'),
+            const SizedBox(height: 4),
+            Text(
+              f.conciergeNom.isEmpty && f.conciergeNum.isEmpty
+                  ? 'Aucun concierge défini sur l\'immeuble « ${f.immeubleNom} ». '
+                      'Ajoutez-le dans la fiche immeuble si besoin.'
+                  : 'Hérité de l\'immeuble « ${f.immeubleNom} » : '
+                      '${[f.conciergeNom, f.conciergeNum].where((e) => e.isNotEmpty).join(' · ')}',
+              style: const TextStyle(fontSize: 12.5, color: AppTheme.inkSoft),
+            ),
+          ],
+        ),
+      );
+    }
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

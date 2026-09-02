@@ -562,9 +562,14 @@ class _ActionsPanel extends StatelessWidget {
                   const Icon(Icons.apartment_rounded,
                       size: 15, color: AppTheme.inkSoft),
                   const SizedBox(width: 6),
-                  Text('Rattaché à un immeuble',
-                      style: GoogleFonts.mavenPro(
-                          fontSize: 12, color: AppTheme.inkSoft)),
+                  Expanded(
+                    child: Text(
+                        h.immeubleNom.isEmpty
+                            ? 'Rattaché à un immeuble'
+                            : 'Immeuble : ${h.immeubleNom}',
+                        style: GoogleFonts.mavenPro(
+                            fontSize: 12, color: AppTheme.inkSoft)),
+                  ),
                 ]),
               ],
             ],

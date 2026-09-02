@@ -35,6 +35,7 @@ class House {
     required this.boostActif,
     required this.icalUrls,
     required this.immeubleRefId,
+    this.immeubleNom = '',
     required this.createdAt,
   });
 
@@ -69,6 +70,7 @@ class House {
   final bool boostActif;
   final List<String> icalUrls;
   final String? immeubleRefId;
+  final String immeubleNom;
   final DateTime? createdAt;
 
   bool get prive => statutValidation == 'prive';
@@ -140,6 +142,7 @@ class House {
       boostActif: m['boost_actif'] == true,
       icalUrls: strs(m['ical_urls']),
       immeubleRefId: imm is DocumentReference ? imm.id : null,
+      immeubleNom: (m['immeuble_nom'] as String?)?.trim() ?? '',
       createdAt: ts(m['created_at']),
     );
   }

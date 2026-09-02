@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import 'annonce_catalog.dart';
 import 'house.dart';
+import 'immeuble.dart';
 
 /// Une photo dans le wizard : soit **nouvelle** (octets en mémoire, à uploader),
 /// soit **déjà en ligne** (URL Storage — cas de la modification d'annonce, on
@@ -126,6 +127,12 @@ class AnnonceForm extends ChangeNotifier {
 
     conciergeNom = s('conciergenom');
     conciergeNum = s('conciergenum');
+    conciergePhotoUrl = s('conciergephoto');
+    final imm = m['immeuble_ref'];
+    if (imm is DocumentReference<Map<String, dynamic>>) {
+      immeubleRef = imm;
+      immeubleNom = s('immeuble_nom');
+    }
 
     if (d('prix') > 0) prix = d('prix');
     if (i('caution_mois') > 0) cautionMois = i('caution_mois');
@@ -197,9 +204,52 @@ class AnnonceForm extends ChangeNotifier {
   // ── Étape 4 — photos par catégorie ──
   final Map<String, List<PickedPhoto>> photos = {};
 
+  // ── Immeuble / résidence (optionnel) ──
+  // Rattaché → quartier / zone / cité / adresse / GPS / concierge viennent de
+  // l'immeuble et ne sont plus saisis. Restent dénormalisés sur `house`.
+  DocumentReference<Map<String, dynamic>>? immeubleRef;
+  String immeubleNom = '';
+  String immeubleDetail = '';
+  bool get hasImmeuble => immeubleRef != null;
+
+  void applyImmeuble(Immeuble im) {
+    immeubleRef =
+        FirebaseFirestore.instance.collection('immeubles').doc(im.id);
+    immeubleNom = im.nom;
+    immeubleDetail = im.sousTitre;
+    quartier = im.quartier;
+    zone = im.zone;
+    cite = im.cite;
+    adresse = im.localisation;
+    final geo = parseLatLng(im.geolocalisation);
+    geoLat = geo?.$1;
+    geoLng = geo?.$2;
+    conciergeNom = im.conciergenom;
+    conciergeNum = im.conciergenum;
+    conciergePhotoUrl = im.conciergephoto;
+    notifyListeners();
+  }
+
+  void clearImmeuble() {
+    immeubleRef = null;
+    immeubleNom = '';
+    immeubleDetail = '';
+    quartier = '';
+    zone = '';
+    cite = '';
+    adresse = '';
+    geoLat = null;
+    geoLng = null;
+    conciergeNom = '';
+    conciergeNum = '';
+    conciergePhotoUrl = '';
+    notifyListeners();
+  }
+
   // ── Étape 5 — concierge ──
   String conciergeNom = '';
   String conciergeNum = '';
+  String conciergePhotoUrl = '';
 
   // ── Étape 6 — prix & description ──
   double prix = 0;
@@ -291,7 +341,8 @@ class AnnonceForm extends ChangeNotifier {
       // création chaque pièce doit avoir sa photo.
       (editionComplete || piecesSansPhoto.isEmpty);
   bool get step5Ok =>
-      conciergeNom.trim().isNotEmpty && conciergeNum.trim().length >= 6;
+      hasImmeuble ||
+      (conciergeNom.trim().isNotEmpty && conciergeNum.trim().length >= 6);
 
   bool get step6Ok {
     if (prix <= 0) return false;
@@ -409,7 +460,9 @@ class AnnonceForm extends ChangeNotifier {
         'nombredepiece': '$nbpiece',
         'conciergenom': conciergeNom.trim(),
         'conciergenum': conciergeNum.trim(),
-        'conciergephoto': '',
+        'conciergephoto': conciergePhotoUrl,
+        'immeuble_ref': immeubleRef,
+        'immeuble_nom': immeubleNom,
         'active': false,
         'sur_marketplace': true,
         'statut_validation': publier ? 'en_attente' : 'brouillon',
