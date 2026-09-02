@@ -186,6 +186,13 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
       };
 
   Future<void> _submit(AnnonceForm f) async {
+    if (context.read<AuthService>().lectureSeule) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Abonnement suspendu — renouvelez pour publier ou '
+            'modifier une annonce.'),
+      ));
+      return;
+    }
     final completer = f.editRef != null;
     final ok = await f.submit();
     if (!mounted) return;

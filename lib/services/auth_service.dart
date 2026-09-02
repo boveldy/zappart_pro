@@ -63,6 +63,11 @@ class AuthService extends ChangeNotifier {
   Abonnement get abonnement => Abonnement.fromPartenaire(_partDoc);
   Map<String, dynamic>? get partenaireDoc => _partDoc;
 
+  /// Abonnement payant expiré depuis > 30 j → la gérance passe en consultation
+  /// seule (aucune écriture : loyers, dépenses, prolongation, clôture…). Tant
+  /// que la fiche partenaire n'est pas chargée, on ne bloque rien.
+  bool get lectureSeule => _partDoc != null && abonnement.lectureSeule;
+
   String get displayName =>
       (_userDoc?['display_name'] as String?)?.trim().isNotEmpty == true
           ? _userDoc!['display_name'] as String

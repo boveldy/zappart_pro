@@ -58,6 +58,7 @@ class AppShell extends StatelessWidget {
               children: [
                 _Topbar(title: current.label),
                 const Divider(height: 1),
+                const _AboBanner(),
                 Expanded(
                   child: Align(
                     alignment: Alignment.topCenter,
@@ -196,6 +197,52 @@ class _NavTile extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bandeau global affiché quand l'abonnement payant est expiré depuis plus de
+/// 30 jours : la gérance passe en consultation seule.
+class _AboBanner extends StatelessWidget {
+  const _AboBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final lectureSeule = context.watch<AuthService>().lectureSeule;
+    if (!lectureSeule) return const SizedBox.shrink();
+    return Material(
+      color: const Color(0xFF8A4033),
+      child: InkWell(
+        onTap: () => context.go('/abonnement'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          child: Row(
+            children: [
+              const Icon(Icons.lock_outline_rounded,
+                  size: 16, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Abonnement suspendu — consultation seule. Les loyers, '
+                  'quittances et relevés restent accessibles ; renouvelez pour '
+                  'reprendre la gestion.',
+                  style: GoogleFonts.mavenPro(
+                      fontSize: 12.5,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text('Renouveler',
+                  style: GoogleFonts.mavenPro(
+                      fontSize: 12.5,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      decoration: TextDecoration.underline)),
+            ],
           ),
         ),
       ),

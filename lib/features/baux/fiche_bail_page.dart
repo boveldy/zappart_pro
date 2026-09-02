@@ -50,6 +50,7 @@ class FicheBailPage extends StatelessWidget {
                   signalements: sSnap.data ?? const [],
                   repo: repo,
                   agence: auth.displayName,
+                  lectureSeule: auth.lectureSeule,
                 ),
               ),
             ),
@@ -96,6 +97,7 @@ class _Content extends StatelessWidget {
     required this.signalements,
     required this.repo,
     required this.agence,
+    this.lectureSeule = false,
   });
   final Bail bail;
   final List<Echeance> echeances;
@@ -104,6 +106,10 @@ class _Content extends StatelessWidget {
   final List<SignalementLoyer> signalements;
   final BailRepository repo;
   final String agence;
+
+  /// Abonnement suspendu (> 30 j) → aucune écriture : les boutons d'action sont
+  /// neutralisés et un encart l'explique.
+  final bool lectureSeule;
 
   static final _fmt = NumberFormat('#,###', 'fr_FR');
   static final _df = DateFormat('d MMM yyyy', 'fr');
@@ -134,6 +140,10 @@ class _Content extends StatelessWidget {
         children: [
           _header(),
           const SizedBox(height: 16),
+          if (lectureSeule) ...[
+            _lectureSeuleBanner(),
+            const SizedBox(height: 16),
+          ],
           if (termeProche) ...[
             _termeBanner(context),
             const SizedBox(height: 16),
@@ -176,6 +186,33 @@ class _Content extends StatelessWidget {
           : Column(children: [left, const SizedBox(height: 16), right]);
     });
   }
+
+  Widget _lectureSeuleBanner() => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBF2F0),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE7D3CF)),
+        ),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.lock_outline_rounded, size: 16, color: Color(0xFF8A4033)),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Abonnement suspendu — consultation seule. Vous pouvez toujours '
+                'télécharger les quittances et relevés, mais l\'enregistrement '
+                'des loyers, dépenses, prolongations et clôtures est bloqué '
+                'jusqu\'au renouvellement.',
+                style: TextStyle(
+                    fontSize: 12, color: Color(0xFF8A4033), height: 1.45),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _header() => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,9 +414,10 @@ class _Content extends StatelessWidget {
                       ),
                       child: const Text('Quittance'),
                     )
-                  : (s == EStatut.du ||
-                          s == EStatut.retard ||
-                          s == EStatut.partiel)
+                  : (!lectureSeule &&
+                          (s == EStatut.du ||
+                              s == EStatut.retard ||
+                              s == EStatut.partiel))
                       ? _miniPay(context, e)
                       : const SizedBox.shrink(),
             ),
@@ -426,6 +464,7 @@ class _Content extends StatelessWidget {
             )
           else
             for (final d in depenses) _depRow(context, d),
+          if (!lectureSeule) ...[
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerLeft,
@@ -443,6 +482,7 @@ class _Content extends StatelessWidget {
               ),
             ),
           ),
+          ],
         ],
       ),
     );
@@ -479,13 +519,14 @@ class _Content extends StatelessWidget {
             Text('${_fmt.format(d.montant.round())} FCFA',
                 style: const TextStyle(
                     fontSize: 12.5, fontWeight: FontWeight.w700)),
-            IconButton(
-              onPressed: () => _supprDepense(context, d),
-              icon: const Icon(Icons.close_rounded, size: 15),
-              color: AppTheme.inkSoft,
-              visualDensity: VisualDensity.compact,
-              tooltip: 'Supprimer',
-            ),
+            if (!lectureSeule)
+              IconButton(
+                onPressed: () => _supprDepense(context, d),
+                icon: const Icon(Icons.close_rounded, size: 15),
+                color: AppTheme.inkSoft,
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Supprimer',
+              ),
           ],
         ),
       );
@@ -512,15 +553,18 @@ class _Content extends StatelessWidget {
             style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
           ),
         ),
-        const SizedBox(width: 10),
-        TextButton(
-          onPressed: () => _openProlonger(context),
-          style: TextButton.styleFrom(
-            foregroundColor: AppTheme.ink,
-            textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+        if (!lectureSeule) ...[
+          const SizedBox(width: 10),
+          TextButton(
+            onPressed: () => _openProlonger(context),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.ink,
+              textStyle:
+                  const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+            ),
+            child: const Text('Prolonger'),
           ),
-          child: const Text('Prolonger'),
-        ),
+        ],
       ]),
     );
   }
@@ -563,6 +607,12 @@ class _Content extends StatelessWidget {
               '${s.methode.isNotEmpty ? ' · ${s.methode}' : ''}',
               style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft)),
           const SizedBox(height: 8),
+          if (lectureSeule)
+            const Text(
+              'Abonnement suspendu — renouvelez pour confirmer ce paiement.',
+              style: TextStyle(fontSize: 11, color: Color(0xFF8A4033)),
+            )
+          else
           Row(children: [
             InkWell(
               onTap: () => _validerSignal(context, s),
@@ -662,7 +712,7 @@ class _Content extends StatelessWidget {
                 : 'Le locataire paie en ligne ; Zappart vous reverse.',
             style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
           ),
-          if (bail.actif) ...[
+          if (bail.actif && !lectureSeule) ...[
             const SizedBox(height: 10),
             OutlinedButton(
               onPressed: () => repo.setEncaissementMode(
@@ -703,7 +753,7 @@ class _Content extends StatelessWidget {
           _actBtn(
             'Marquer un loyer payé',
             filled: true,
-            onTap: (bail.actif && prochaine.isNotEmpty)
+            onTap: (bail.actif && prochaine.isNotEmpty && !lectureSeule)
                 ? () => _openMarquerPaye(context, prochaine.first)
                 : null,
           ),
@@ -713,12 +763,15 @@ class _Content extends StatelessWidget {
           _actBtn('Relancer le locataire', onTap: () => _relance(context)),
           if (bail.actif) ...[
             const SizedBox(height: 8),
-            _actBtn('Prolonger le bail', onTap: () => _openProlonger(context)),
+            _actBtn('Prolonger le bail',
+                onTap: lectureSeule ? null : () => _openProlonger(context)),
           ],
           const SizedBox(height: 8),
           _actBtn('Clôturer le bail',
               danger: true,
-              onTap: bail.actif ? () => _openCloture(context) : null),
+              onTap: (bail.actif && !lectureSeule)
+                  ? () => _openCloture(context)
+                  : null),
         ],
       ),
     );
