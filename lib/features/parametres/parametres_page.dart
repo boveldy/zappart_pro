@@ -132,7 +132,7 @@ class _Body extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        _Facturation(m: m),
+        _Facturation(m: m, partnerRef: partnerRef),
         const SizedBox(height: 16),
         _AbonnementCard(abonnement: abonnement),
         const SizedBox(height: 16),
@@ -315,58 +315,101 @@ class _Avatar extends StatelessWidget {
 // ── Facturation & versement ────────────────────────────────────────────────
 
 class _Facturation extends StatelessWidget {
-  const _Facturation({required this.m});
+  const _Facturation({required this.m, required this.partnerRef});
   final Map<String, dynamic> m;
+  final DocumentReference<Map<String, dynamic>> partnerRef;
 
   String _s(String k) => (m[k] as String?)?.trim() ?? '';
 
-  @override
-  Widget build(BuildContext context) {
+  /// L'agence a-t-elle au moins un bien sur le marketplace (soumis ou publié) ?
+  /// Sinon elle ne fait que de la gérance → la commission marketplace ne la
+  /// concerne pas, on masque la ligne.
+  Future<bool> _faitDuMarketplace() async {
+    try {
+      final q = await FirebaseFirestore.instance
+          .collection('house')
+          .where('partenaireId', isEqualTo: partnerRef)
+          .get();
+      return q.docs.any((d) {
+        final sv = (d.data()['statut_validation'] as String?)?.trim() ?? '';
+        return sv != 'prive' && sv != 'supprimee' && sv.isNotEmpty;
+      });
+    } catch (_) {
+      return true; // en cas de doute, on affiche
+    }
+  }
+
+  String _commissionLabel() {
     final base = _s('commission_base');
     final valeur = (m['commission_valeur'] as num?)?.toDouble();
-    final commission = valeur == null
-        ? '—'
-        : base == 'pourcentage'
-            ? '${valeur.toStringAsFixed(valeur % 1 == 0 ? 0 : 1)} %'
-            : '${NumberFormat('#,###', 'fr_FR').format(valeur.round())} FCFA';
+    if (valeur == null || valeur <= 0) return 'Définie par Zappart';
+    final v = valeur.toStringAsFixed(valeur % 1 == 0 ? 0 : 1);
+    return base == 'pourcent' ? '$v % du loyer' : '$v mois de loyer';
+  }
 
-    return AppCard(
-      title: 'Facturation & versement',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.panel,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text('Commission Zappart',
-                      style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.inkSoft)),
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _faitDuMarketplace(),
+      builder: (context, snap) {
+        final marketplace = snap.data ?? false;
+        return AppCard(
+          title: marketplace ? 'Facturation & versement' : 'Versement',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (marketplace) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.panel,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text('Commission mensuelle Zappart',
+                                style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.inkSoft)),
+                          ),
+                          Text(_commissionLabel(),
+                              style: GoogleFonts.mavenPro(
+                                  fontSize: 15, fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'S\'applique quand un client prend un de vos biens en '
+                        'bail via le marketplace : c\'est la part du 1ᵉʳ mois de '
+                        'commission que Zappart conserve (le reste vous est '
+                        'reversé). Le journalier n\'est pas concerné.',
+                        style: TextStyle(
+                            fontSize: 11, color: AppTheme.inkSoft, height: 1.4),
+                      ),
+                    ],
+                  ),
                 ),
-                Text(commission,
-                    style: GoogleFonts.mavenPro(
-                        fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
               ],
-            ),
+              _Kv('Numéro Wave', _s('wave_numero')),
+              _Kv('Orange Money / MaxIt', _s('max_it_numero'), last: true),
+              const SizedBox(height: 10),
+              const Text(
+                'Le numéro de versement est reconfirmé à chaque demande de '
+                'retrait dans Revenus. Ces informations sont modifiées par le '
+                'support.',
+                style: TextStyle(
+                    fontSize: 11.5, color: AppTheme.inkSoft, height: 1.4),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          _Kv('Numéro Wave', _s('wave_numero')),
-          _Kv('Orange Money / MaxIt', _s('max_it_numero'), last: true),
-          const SizedBox(height: 10),
-          const Text(
-            'Le numéro de versement est reconfirmé à chaque demande de retrait '
-            'dans Revenus. Commission et coordonnées : modification par le support.',
-            style: TextStyle(fontSize: 11.5, color: AppTheme.inkSoft, height: 1.4),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
