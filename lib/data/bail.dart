@@ -430,10 +430,26 @@ class BailRepository {
       .where('partenaire_ref', isEqualTo: partenaireRef)
       .limit(300)
       .snapshots()
-      .map((s) => s.docs.map(Bail.fromDoc).toList());
+      .map((s) => s.docs
+          .map(Bail.fromDoc)
+          .where((b) => b.statut != 'supprime')
+          .toList());
 
-  Stream<Bail?> bail(String id) =>
-      _baux.doc(id).snapshots().map((d) => d.exists ? Bail.fromDoc(d) : null);
+  Stream<Bail?> bail(String id) => _baux.doc(id).snapshots().map((d) =>
+      d.exists && (d.data()?['statut'] != 'supprime') ? Bail.fromDoc(d) : null);
+
+  /// Supprime un bail **créé par erreur** (jamais encaissé) : soft-delete du
+  /// bail + annulation de ses échéances. Un bail avec paiement se **clôture**.
+  Future<void> supprimerBailVierge(
+      String bailId, Iterable<String> echeanceIds) async {
+    final batch = _db.batch();
+    batch.update(_baux.doc(bailId),
+        {'statut': 'supprime', 'supprime_le': FieldValue.serverTimestamp()});
+    for (final id in echeanceIds) {
+      batch.update(_echeances.doc(id), {'statut': 'annule'});
+    }
+    await batch.commit();
+  }
 
   /// Toutes les échéances du partenaire (pour le dashboard + les retards).
   Stream<List<Echeance>> echeances() => _echeances

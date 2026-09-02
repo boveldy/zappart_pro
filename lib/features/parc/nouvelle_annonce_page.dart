@@ -156,6 +156,24 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
                               fontSize: 12, color: Color(0xFF2C4A73)),
                         ),
                       ),
+                    ] else if (form.brouillonPossible) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.panel,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          'Ajoutez le bien à votre parc dès maintenant : '
+                          '« Enregistrer le brouillon » le garde privé et modifiable. '
+                          '« Publier » l\'envoie en validation Zappart pour le mettre '
+                          'sur le marketplace.',
+                          style: TextStyle(
+                              fontSize: 12, color: AppTheme.inkSoft, height: 1.4),
+                        ),
+                      ),
                     ],
                     _TopBar(step: _step, total: _titres.length),
                     const SizedBox(height: 8),
@@ -173,7 +191,12 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
                       submitting: form.submitting,
                       submitLabel: modifier
                           ? 'Enregistrer et renvoyer en validation'
-                          : 'Soumettre pour validation',
+                          : completer
+                              ? 'Publier'
+                              : 'Publier l\'annonce',
+                      onSaveDraft: form.brouillonPossible
+                          ? () => _submit(form, publier: false)
+                          : null,
                       onBack: () {
                         if (_step == 0) {
                           context.go('/parc');
@@ -182,7 +205,7 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
                         }
                       },
                       onNext: () => setState(() => _step++),
-                      onSubmit: () => _submit(form),
+                      onSubmit: () => _submit(form, publier: true),
                     ),
                     if (form.erreur != null) ...[
                       const SizedBox(height: 12),
@@ -210,8 +233,8 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
         _ => _StepRecap(f),
       };
 
-  Future<void> _submit(AnnonceForm f) async {
-    if (context.read<AuthService>().lectureSeule) {
+  Future<void> _submit(AnnonceForm f, {required bool publier}) async {
+    if (publier && context.read<AuthService>().lectureSeule) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Abonnement suspendu — renouvelez pour publier ou '
             'modifier une annonce.'),
@@ -220,16 +243,17 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
     }
     final modifier = f.editionComplete;
     final aUnRef = f.editRef != null;
-    final ok = await f.submit();
+    final ok = await f.submit(publier: publier);
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(modifier
-            ? "Modifications envoyées. L'annonce repasse en validation."
-            : aUnRef
-                ? "Bien envoyé pour validation. Il rejoindra la marketplace dès son approbation."
-                : "Annonce envoyée pour validation. Elle sera en ligne dès son approbation."),
-      ));
+      final msg = !publier
+          ? 'Brouillon enregistré. Vous le retrouvez dans « Parc ».'
+          : modifier
+              ? "Modifications envoyées. L'annonce repasse en validation."
+              : aUnRef
+                  ? "Bien envoyé pour validation. Il rejoindra la marketplace dès son approbation."
+                  : "Annonce envoyée pour validation. Elle sera en ligne dès son approbation.";
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       context.go(aUnRef ? '/parc/${f.editRef!.id}' : '/parc');
     }
   }
@@ -271,11 +295,13 @@ class _Footer extends StatelessWidget {
     required this.onBack,
     required this.onNext,
     required this.onSubmit,
+    this.onSaveDraft,
     this.submitLabel = 'Soumettre pour validation',
   });
   final int step, total;
   final bool canNext, submitting;
   final VoidCallback onBack, onNext, onSubmit;
+  final VoidCallback? onSaveDraft;
   final String submitLabel;
 
   @override
@@ -289,6 +315,20 @@ class _Footer extends StatelessWidget {
               style: const TextStyle(color: AppTheme.inkSoft)),
         ),
         const Spacer(),
+        if (onSaveDraft != null) ...[
+          OutlinedButton(
+            onPressed: submitting ? null : onSaveDraft,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.ink,
+              side: const BorderSide(color: AppTheme.line),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Enregistrer le brouillon'),
+          ),
+          const SizedBox(width: 10),
+        ],
         ElevatedButton(
           onPressed: submitting || !canNext
               ? null

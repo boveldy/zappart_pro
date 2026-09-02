@@ -177,6 +177,17 @@ class HouseRepository {
   Future<void> setActive(String id, bool value) =>
       _col.doc(id).update({'active': value});
 
+  /// Publie un brouillon → file de validation admin.
+  Future<void> publierBrouillon(String id) => _col.doc(id).update({
+        'statut_validation': 'en_attente',
+        'active': false,
+        'soumis_le': FieldValue.serverTimestamp(),
+      });
+
+  /// Supprime définitivement un brouillon (autorisé par les règles : hôte +
+  /// `statut_validation == 'brouillon'`).
+  Future<void> supprimerBrouillon(String id) => _col.doc(id).delete();
+
   Future<void> archive(String id) => _col.doc(id).update({
         'statut_validation': 'supprimee',
         'active': false,

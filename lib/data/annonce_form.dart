@@ -44,10 +44,20 @@ class AnnonceForm extends ChangeNotifier {
   /// `bail.house_ref`, les stats, le boost…).
   DocumentReference<Map<String, dynamic>>? editRef;
 
-  /// `true` → on modifie une annonce **déjà remplie** (souvent déjà en ligne) :
-  /// on pré-remplit TOUT (photos existantes comprises) et on assouplit la règle
-  /// « une photo par pièce » (on fait confiance au jeu déjà validé).
+  /// `true` → on modifie une annonce **déjà remplie et validée** : on pré-remplit
+  /// TOUT (photos comprises), on assouplit « une photo par pièce », et
+  /// l'enregistrement la renvoie en validation.
   bool editionComplete = false;
+
+  /// `true` → on édite un **brouillon** (jamais soumis) : l'hôte peut ré-enregistrer
+  /// le brouillon ou le publier.
+  bool estBrouillon = false;
+
+  /// Le wizard peut-il proposer « Enregistrer le brouillon » ? (création neuve
+  /// ou édition d'un brouillon — jamais pour « compléter un privé » ni pour
+  /// modifier une annonce validée).
+  bool get brouillonPossible =>
+      !editionComplete && (editRef == null || estBrouillon);
 
   /// Pré-remplit le formulaire depuis un bien privé de gérance (« Compléter et
   /// publier ») — ne reprend que ce qui est fiable.
@@ -76,7 +86,9 @@ class AnnonceForm extends ChangeNotifier {
   void loadFromDoc(DocumentSnapshot<Map<String, dynamic>> snap) {
     final m = snap.data() ?? const <String, dynamic>{};
     editRef = snap.reference;
-    editionComplete = true;
+    final sv = (m['statut_validation'] as String?)?.trim() ?? '';
+    estBrouillon = sv == 'brouillon';
+    editionComplete = !estBrouillon;
 
     String s(String k) => (m[k] as String?)?.trim() ?? '';
     int i(String k) => (m[k] as num?)?.toInt() ?? 0;
@@ -331,7 +343,10 @@ class AnnonceForm extends ChangeNotifier {
   bool submitting = false;
   String? erreur;
 
-  Future<bool> submit() async {
+  /// [publier] `true` → l'annonce part en `en_attente` (file de validation).
+  /// `false` → elle reste un `brouillon` (visible du seul hôte, éditable et
+  /// supprimable) — les champs incomplets sont tolérés.
+  Future<bool> submit({bool publier = true}) async {
     submitting = true;
     erreur = null;
     notifyListeners();
@@ -384,7 +399,7 @@ class AnnonceForm extends ChangeNotifier {
         'cite': cite.trim(),
         'localisation': adresse.trim(),
         'emplacement': emplacement,
-        'geolocalisation': mapsLink(geoLat!, geoLng!),
+        if (hasPosition) 'geolocalisation': mapsLink(geoLat!, geoLng!),
         'prix': prix,
         'nbchambre': nbchambre,
         'nbsalon': nbsalon.toDouble(),
@@ -397,12 +412,12 @@ class AnnonceForm extends ChangeNotifier {
         'conciergephoto': '',
         'active': false,
         'sur_marketplace': true,
-        'statut_validation': 'en_attente',
+        'statut_validation': publier ? 'en_attente' : 'brouillon',
         'motif_rejet': '',
         'image': image,
         'photos_categories': urlsParCat,
         'Comodite': comodites.toList(),
-        'soumis_le': FieldValue.serverTimestamp(),
+        if (publier) 'soumis_le': FieldValue.serverTimestamp(),
         if (editRef == null) 'created_at': FieldValue.serverTimestamp(),
       };
 
@@ -427,6 +442,8 @@ class AnnonceForm extends ChangeNotifier {
         await doc.update(data);
       } else {
         await doc.set(data);
+        editRef = doc; // enchaîner brouillon → publier sans créer un 2ᵉ doc
+        if (!publier) estBrouillon = true;
       }
       return true;
     } catch (e) {

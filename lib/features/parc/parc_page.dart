@@ -122,6 +122,7 @@ class _ParcPageState extends State<ParcPage> {
           'En ligne' => h.enLigne,
           'Hors ligne' => h.horsLigne,
           'En validation' => h.enValidation,
+          'Brouillons' => h.brouillon,
           'Rejetées' => h.rejetee,
           _ => true,
         };
@@ -190,6 +191,7 @@ class _FilterBar extends StatelessWidget {
             'En ligne',
             'Hors ligne',
             'En validation',
+            'Brouillons',
             'Rejetées'
           ],
           onChanged: onStatut,

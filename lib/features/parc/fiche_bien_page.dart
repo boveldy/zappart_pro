@@ -160,6 +160,42 @@ class _ContentState extends State<_Content> {
     }
   }
 
+  Future<void> _deleteBrouillon() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('Supprimer ce brouillon ?',
+            style: GoogleFonts.mavenPro(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Le brouillon et ses informations sont définitivement supprimés. '
+          'Cette action est irréversible.',
+          style: GoogleFonts.mavenPro(fontSize: 13.5),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Annuler')),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF8A4033)),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await widget.repo.supprimerBrouillon(widget.house.id);
+      if (mounted) {
+        _snack('Brouillon supprimé.');
+        context.go('/parc');
+      }
+    } catch (_) {
+      _snack('Suppression impossible. Réessayez.');
+    }
+  }
+
   void _snack(String m) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(m)));
 
@@ -198,6 +234,7 @@ class _ContentState extends State<_Content> {
         onToggle: _toggleActive,
         onArchive: _archive,
         onEdit: () => context.go('/parc/${h.id}/modifier'),
+        onDeleteBrouillon: _deleteBrouillon,
         onPublish:
             h.prive ? () => context.go('/parc/${h.id}/publier') : null,
       );
@@ -462,11 +499,12 @@ class _ActionsPanel extends StatelessWidget {
     required this.onToggle,
     required this.onArchive,
     required this.onEdit,
+    required this.onDeleteBrouillon,
     this.onPublish,
   });
   final House house;
   final bool busy;
-  final VoidCallback onToggle, onArchive, onEdit;
+  final VoidCallback onToggle, onArchive, onEdit, onDeleteBrouillon;
   final VoidCallback? onPublish;
 
   @override
@@ -538,7 +576,19 @@ class _ActionsPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (onPublish != null) ...[
+              if (h.brouillon) ...[
+                _ActionBtn(
+                  icon: Icons.edit_outlined,
+                  label: 'Compléter et publier',
+                  onTap: busy ? null : onEdit,
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Ce bien est un brouillon : visible de vous seul, pas encore '
+                  'sur le marketplace. Complétez-le puis publiez-le.',
+                  style: TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
+                ),
+              ] else if (onPublish != null) ...[
                 _ActionBtn(
                   icon: Icons.publish_outlined,
                   label: 'Compléter et publier',
@@ -569,14 +619,22 @@ class _ActionsPanel extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
-                  onPressed: busy ? null : onArchive,
+                  onPressed: busy
+                      ? null
+                      : (h.brouillon ? onDeleteBrouillon : onArchive),
                   icon: busy
                       ? const SizedBox(
                           width: 13,
                           height: 13,
                           child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.inventory_2_outlined, size: 15),
-                  label: const Text('Retirer ce bien du parc'),
+                      : Icon(
+                          h.brouillon
+                              ? Icons.delete_outline_rounded
+                              : Icons.inventory_2_outlined,
+                          size: 15),
+                  label: Text(h.brouillon
+                      ? 'Supprimer le brouillon'
+                      : 'Retirer ce bien du parc'),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF8A4033),
                     padding: EdgeInsets.zero,

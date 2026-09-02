@@ -772,9 +772,63 @@ class _Content extends StatelessWidget {
               onTap: (bail.actif && !lectureSeule)
                   ? () => _openCloture(context)
                   : null),
+          if (_estVierge) ...[
+            const SizedBox(height: 8),
+            _actBtn('Supprimer ce bail (créé par erreur)',
+                danger: true,
+                onTap: lectureSeule ? null : () => _supprimerVierge(context)),
+          ],
         ],
       ),
     );
+  }
+
+  /// Bail jamais utilisé : aucune échéance payée/partielle, aucun signalement.
+  bool get _estVierge =>
+      bail.actif &&
+      echeances.every(
+          (e) => e.statutBrut != 'paye' && e.statutBrut != 'partiel') &&
+      signalements.isEmpty;
+
+  Future<void> _supprimerVierge(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Supprimer ce bail ?', style: TextStyle(fontSize: 16)),
+        content: const Text(
+          'À réserver aux baux créés par erreur : aucun loyer n\'a été encaissé. '
+          'Le bail et son échéancier disparaissent (côté agence et locataire). '
+          'Pour un bail réel, utilisez « Clôturer ».',
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Annuler')),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF8A4033)),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await repo.supprimerBailVierge(bail.id, echeances.map((e) => e.id));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Bail supprimé.')));
+        context.go('/baux');
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Suppression impossible.')));
+      }
+    }
   }
 
   Widget _actBtn(String label,
