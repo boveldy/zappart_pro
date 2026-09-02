@@ -6,13 +6,22 @@ import 'package:flutter/foundation.dart';
 import 'annonce_catalog.dart';
 import 'house.dart';
 
-/// Une photo choisie dans le wizard (octets en mémoire, pas encore uploadée).
+/// Une photo dans le wizard : soit **nouvelle** (octets en mémoire, à uploader),
+/// soit **déjà en ligne** (URL Storage — cas de la modification d'annonce, on
+/// la conserve telle quelle).
 class PickedPhoto {
-  PickedPhoto({required this.bytes, required this.mime});
-  final Uint8List bytes;
+  PickedPhoto.bytes(this.bytes, this.mime) : url = null;
+  PickedPhoto.existante(this.url)
+      : bytes = null,
+        mime = 'image/jpeg';
+
+  final Uint8List? bytes;
+  final String? url;
   final String mime;
 
-  bool get tropLourde => bytes.lengthInBytes >= 10 * 1024 * 1024;
+  bool get estExistante => url != null;
+  bool get tropLourde =>
+      bytes != null && bytes!.lengthInBytes >= 10 * 1024 * 1024;
 }
 
 /// État + soumission du wizard d'annonce (Zappart Pro web).
@@ -30,14 +39,18 @@ class AnnonceForm extends ChangeNotifier {
 
   final DocumentReference<Map<String, dynamic>> partenaireRef;
 
-  /// Non nul → mode « compléter et publier » : `submit()` met à jour CE document
-  /// `house` (bien privé de la gérance) au lieu d'en créer un neuf, ce qui
-  /// préserve le lien `bail.house_ref`.
+  /// Non nul → mode « compléter et publier » OU « modifier » : `submit()` met à
+  /// jour CE document `house` au lieu d'en créer un neuf (préserve le lien
+  /// `bail.house_ref`, les stats, le boost…).
   DocumentReference<Map<String, dynamic>>? editRef;
 
-  /// Pré-remplit le formulaire depuis un bien existant (bien privé de gérance).
-  /// Ne reprend que ce qui est fiable : type de location, prix (= loyer), caution.
-  /// Le quartier d'un bien privé est un texte libre → laissé à ressaisir.
+  /// `true` → on modifie une annonce **déjà remplie** (souvent déjà en ligne) :
+  /// on pré-remplit TOUT (photos existantes comprises) et on assouplit la règle
+  /// « une photo par pièce » (on fait confiance au jeu déjà validé).
+  bool editionComplete = false;
+
+  /// Pré-remplit le formulaire depuis un bien privé de gérance (« Compléter et
+  /// publier ») — ne reprend que ce qui est fiable.
   void seedFromHouse(House h) {
     editRef = FirebaseFirestore.instance.collection('house').doc(h.id);
     locationtype =
@@ -55,6 +68,91 @@ class AnnonceForm extends ChangeNotifier {
     }
     if (h.description.isNotEmpty) description = h.description;
     notifyListeners();
+  }
+
+  /// Pré-remplit le formulaire depuis un document `house` **complet** pour le
+  /// modifier. Reprend tous les champs saisissables + les photos déjà en ligne
+  /// (`photos_categories`, sinon la liste `image` sous la 1ʳᵉ catégorie).
+  void loadFromDoc(DocumentSnapshot<Map<String, dynamic>> snap) {
+    final m = snap.data() ?? const <String, dynamic>{};
+    editRef = snap.reference;
+    editionComplete = true;
+
+    String s(String k) => (m[k] as String?)?.trim() ?? '';
+    int i(String k) => (m[k] as num?)?.toInt() ?? 0;
+    double d(String k) => (m[k] as num?)?.toDouble() ?? 0;
+
+    locationtype = s('locationtype') == 'Journalier' ? 'Journalier' : 'Mensuel';
+    if (kTypesLogement.contains(s('types'))) type = s('types');
+    if (quartierInfoFor(s('quartier')) != null) quartier = s('quartier');
+    zone = s('zone');
+    cite = s('cite');
+    adresse = s('localisation');
+    emplacement = s('emplacement');
+    final geo = parseLatLng(s('geolocalisation'));
+    if (geo != null) {
+      geoLat = geo.$1;
+      geoLng = geo.$2;
+    }
+
+    if (i('nbchambre') > 0) nbchambre = i('nbchambre');
+    if (d('nbsalon') > 0) nbsalon = d('nbsalon').round();
+    if (i('nbbain') > 0) nbbain = i('nbbain');
+    if (i('nbcuisine') > 0) nbcuisine = i('nbcuisine');
+    if (i('surface') > 0) surface = i('surface');
+    if (int.tryParse(s('maximal')) != null) capacite = int.parse(s('maximal'));
+    if (i('numbien') > 0) numbien = i('numbien');
+    heureArriveeMin = _minutesDe(m['heureRegle1']) ?? heureArriveeMin;
+    heureDepartMin = _minutesDe(m['heureRegle2']) ?? heureDepartMin;
+    regles
+      ..clear()
+      ..addAll((m['regleMaison'] as List?)?.whereType<String>() ?? const []);
+
+    comodites
+      ..clear()
+      ..addAll((m['Comodite'] as List?)?.whereType<String>() ?? const []);
+
+    conciergeNom = s('conciergenom');
+    conciergeNum = s('conciergenum');
+
+    if (d('prix') > 0) prix = d('prix');
+    if (i('caution_mois') > 0) cautionMois = i('caution_mois');
+    if (s('charges_incluses').isNotEmpty) chargesIncluses = s('charges_incluses');
+    chargesPrecision = s('charges_precision');
+    if (i('bail_min_mois') > 0) bailMinMois = i('bail_min_mois');
+    journeeActive = m['journee_active'] == true;
+    if (d('prix_journee') > 0) prixJournee = d('prix_journee');
+    description = s('description');
+    accroche = s('specifications');
+
+    // Photos déjà en ligne.
+    photos.clear();
+    final cats = m['photos_categories'];
+    if (cats is Map && cats.isNotEmpty) {
+      cats.forEach((k, v) {
+        final urls = (v as List?)?.whereType<String>() ?? const <String>[];
+        if (urls.isNotEmpty) {
+          photos['$k'] = [for (final u in urls) PickedPhoto.existante(u)];
+        }
+      });
+    } else {
+      final imgs = (m['image'] as List?)?.whereType<String>().toList() ??
+          const <String>[];
+      if (imgs.isNotEmpty) {
+        final cible =
+            categoriesPieces.isNotEmpty ? categoriesPieces.first : 'Photos';
+        photos[cible] = [for (final u in imgs) PickedPhoto.existante(u)];
+      }
+    }
+    notifyListeners();
+  }
+
+  static int? _minutesDe(dynamic v) {
+    if (v is Timestamp) {
+      final t = v.toDate();
+      return t.hour * 60 + t.minute;
+    }
+    return null;
   }
 
   // ── Étape 1 — type & localisation ──
@@ -175,8 +273,11 @@ class AnnonceForm extends ChangeNotifier {
   }
 
   bool get step3Ok => true;
-  bool get step4Ok =>
-      piecesSansPhoto.isEmpty && totalPhotos >= 3 && toutesLesPhotosOk;
+  bool get step4Ok => totalPhotos >= 3 &&
+      toutesLesPhotosOk &&
+      // En modification on fait confiance au jeu de photos déjà validé ; en
+      // création chaque pièce doit avoir sa photo.
+      (editionComplete || piecesSansPhoto.isEmpty);
   bool get step5Ok =>
       conciergeNom.trim().isNotEmpty && conciergeNum.trim().length >= 6;
 
@@ -244,7 +345,8 @@ class AnnonceForm extends ChangeNotifier {
           editRef ?? FirebaseFirestore.instance.collection('house').doc();
       final stamp = DateTime.now().microsecondsSinceEpoch;
 
-      // Upload par catégorie (séquentiel → ordre stable).
+      // Upload par catégorie (séquentiel → ordre stable). Les photos déjà en
+      // ligne (modification) sont conservées telles quelles.
       final urlsParCat = <String, List<String>>{};
       for (final entry in photos.entries) {
         if (entry.value.isEmpty) continue;
@@ -252,10 +354,14 @@ class AnnonceForm extends ChangeNotifier {
         final urls = <String>[];
         for (var i = 0; i < entry.value.length; i++) {
           final p = entry.value[i];
+          if (p.estExistante) {
+            urls.add(p.url!);
+            continue;
+          }
           final ext = p.mime.contains('png') ? 'png' : 'jpg';
           final ref = FirebaseStorage.instance.ref().child(
               'House/$uid/${doc.id}/img_${slug}_${stamp}_$i.$ext');
-          await ref.putData(p.bytes, SettableMetadata(contentType: p.mime));
+          await ref.putData(p.bytes!, SettableMetadata(contentType: p.mime));
           urls.add(await ref.getDownloadURL());
         }
         urlsParCat[entry.key] = urls;

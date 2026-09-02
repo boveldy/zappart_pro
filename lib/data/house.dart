@@ -162,6 +162,15 @@ class HouseRepository {
           .where((h) => !h.archivee)
           .toList());
 
+  /// Les biens archivés du partenaire, plus récent d'abord.
+  Stream<List<House>> archives() => _col
+      .where('partenaireId', isEqualTo: partenaireRef)
+      .limit(500)
+      .snapshots()
+      .map((s) => s.docs.map(House.fromDoc).where((h) => h.archivee).toList()
+        ..sort((a, b) =>
+            (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000))));
+
   Stream<House?> one(String id) =>
       _col.doc(id).snapshots().map((d) => d.exists ? House.fromDoc(d) : null);
 
@@ -173,4 +182,29 @@ class HouseRepository {
         'active': false,
         'supprimee_le': FieldValue.serverTimestamp(),
       });
+
+  /// Sort un bien des archives → repart en file de validation (jamais direct en
+  /// ligne).
+  Future<void> restore(String id) => _col.doc(id).update({
+        'statut_validation': 'en_attente',
+        'active': false,
+        'motif_rejet': '',
+        'soumis_le': FieldValue.serverTimestamp(),
+        'supprimee_le': FieldValue.delete(),
+      });
+
+  /// Un bail `actif` est-il rattaché à ce bien ? La règle Firestore impose de
+  /// requêter sur `partenaire_ref` (pas `house_ref`) → on filtre côté client.
+  Future<bool> aUnBailActif(String houseId) async {
+    final snap = await FirebaseFirestore.instance
+        .collection('baux')
+        .where('partenaire_ref', isEqualTo: partenaireRef)
+        .get();
+    return snap.docs.any((d) {
+      final m = d.data();
+      final hr = m['house_ref'];
+      final id = hr is DocumentReference ? hr.id : null;
+      return id == houseId && (m['statut'] ?? 'actif') == 'actif';
+    });
+  }
 }

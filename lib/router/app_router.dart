@@ -11,6 +11,7 @@ import '../features/calendrier/calendrier_page.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/not_partner_page.dart';
 import '../features/parametres/parametres_page.dart';
+import '../features/parc/archives_page.dart';
 import '../features/parc/fiche_bien_page.dart';
 import '../features/parc/nouvelle_annonce_page.dart';
 import '../features/parc/parc_page.dart';
@@ -68,6 +69,10 @@ GoRouter buildRouter(AuthService auth) {
                 builder: (_, __) => const NouvelleAnnoncePage(),
               ),
               GoRoute(
+                path: 'archives',
+                builder: (_, __) => const ArchivesPage(),
+              ),
+              GoRoute(
                 path: ':id',
                 builder: (_, s) =>
                     FicheBienPage(id: s.pathParameters['id']!),
@@ -76,6 +81,11 @@ GoRouter buildRouter(AuthService auth) {
                     path: 'publier',
                     builder: (_, s) => NouvelleAnnoncePage(
                         completerId: s.pathParameters['id']),
+                  ),
+                  GoRoute(
+                    path: 'modifier',
+                    builder: (_, s) => NouvelleAnnoncePage(
+                        modifierId: s.pathParameters['id']),
                   ),
                 ],
               ),

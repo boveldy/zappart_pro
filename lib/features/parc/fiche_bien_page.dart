@@ -97,15 +97,43 @@ class _ContentState extends State<_Content> {
   }
 
   Future<void> _archive() async {
+    setState(() => _busy = true);
+    final bailActif = await widget.repo.aUnBailActif(widget.house.id);
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (bailActif) {
+      await showDialog<void>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text('Bail en cours',
+              style: GoogleFonts.mavenPro(fontWeight: FontWeight.w700)),
+          content: Text(
+            'Ce bien a un bail actif. Clôturez d\'abord le bail '
+            '(onglet Baux) : le locataire perdrait sinon l\'accès à son '
+            'échéancier et à ses quittances.',
+            style: GoogleFonts.mavenPro(fontSize: 13.5),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: const Text('Compris')),
+          ],
+        ),
+      );
+      return;
+    }
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text('Archiver ce bien ?',
+        title: Text('Retirer ce bien du parc ?',
             style: GoogleFonts.mavenPro(fontWeight: FontWeight.w700)),
         content: Text(
-          'Le bien sort de votre parc et de la marketplace. '
-          'L\'historique des réservations est conservé. '
-          'La restauration se fait via le support.',
+          'Le bien quitte le marketplace et votre liste « Parc ». '
+          'L\'historique des réservations est conservé. Vous pourrez le '
+          'restaurer depuis « Parc → Biens archivés » (il repassera par la '
+          'validation).',
           style: GoogleFonts.mavenPro(fontSize: 13.5),
         ),
         actions: [
@@ -114,8 +142,8 @@ class _ContentState extends State<_Content> {
               child: const Text('Annuler')),
           FilledButton(
             onPressed: () => Navigator.pop(c, true),
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.ink),
-            child: const Text('Archiver'),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF8A4033)),
+            child: const Text('Retirer'),
           ),
         ],
       ),
@@ -123,9 +151,12 @@ class _ContentState extends State<_Content> {
     if (ok != true) return;
     try {
       await widget.repo.archive(widget.house.id);
-      if (mounted) context.go('/parc');
+      if (mounted) {
+        _snack('Bien retiré du parc.');
+        context.go('/parc');
+      }
     } catch (_) {
-      _snack('Archivage impossible. Réessayez.');
+      _snack('Opération impossible. Réessayez.');
     }
   }
 
@@ -166,8 +197,7 @@ class _ContentState extends State<_Content> {
         busy: _busy,
         onToggle: _toggleActive,
         onArchive: _archive,
-        onEdit: () => _snack(
-            'La modification depuis le web arrive bientôt. Pour l\'instant, modifiez via l\'app Zappart.'),
+        onEdit: () => context.go('/parc/${h.id}/modifier'),
         onPublish:
             h.prive ? () => context.go('/parc/${h.id}/publier') : null,
       );
@@ -506,6 +536,7 @@ class _ActionsPanel extends StatelessWidget {
         AppCard(
           title: 'Actions',
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (onPublish != null) ...[
                 _ActionBtn(
@@ -519,20 +550,42 @@ class _ActionsPanel extends StatelessWidget {
                   'Ajoutez photos et description pour le proposer sur la marketplace.',
                   style: TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
                 ),
-                const SizedBox(height: 12),
               ] else ...[
                 _ActionBtn(
                   icon: Icons.edit_outlined,
                   label: 'Modifier l\'annonce',
-                  onTap: onEdit,
+                  onTap: busy ? null : onEdit,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
+                const Text(
+                  'Toute modification renvoie l\'annonce en validation ; elle '
+                  'quitte le marketplace le temps de la revue.',
+                  style: TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
+                ),
               ],
-              _ActionBtn(
-                icon: Icons.inventory_2_outlined,
-                label: 'Archiver le bien',
-                danger: true,
-                onTap: busy ? null : onArchive,
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: busy ? null : onArchive,
+                  icon: busy
+                      ? const SizedBox(
+                          width: 13,
+                          height: 13,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.inventory_2_outlined, size: 15),
+                  label: const Text('Retirer ce bien du parc'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF8A4033),
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: GoogleFonts.mavenPro(
+                        fontSize: 12.5, fontWeight: FontWeight.w600),
+                  ),
+                ),
               ),
             ],
           ),
@@ -676,32 +729,28 @@ class _ActionBtn extends StatelessWidget {
     required this.icon,
     required this.label,
     this.onTap,
-    this.danger = false,
   });
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
-  final bool danger;
 
   @override
   Widget build(BuildContext context) {
-    final c = danger ? const Color(0xFF8A4033) : AppTheme.ink;
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: onTap,
-        icon: Icon(icon, size: 17, color: c),
+        icon: Icon(icon, size: 17, color: AppTheme.ink),
         label: Align(
           alignment: Alignment.centerLeft,
           child: Text(label,
               style: GoogleFonts.mavenPro(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: c)),
+                  fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.ink)),
         ),
         style: OutlinedButton.styleFrom(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          side: BorderSide(
-              color: danger ? const Color(0xFFE7D3CF) : AppTheme.line),
+          side: const BorderSide(color: AppTheme.line),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),

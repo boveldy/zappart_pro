@@ -66,6 +66,17 @@ class _ParcPageState extends State<ParcPage> {
               : '${all.length} bien${all.length > 1 ? 's' : ''}'
                   ' · ${all.where((h) => h.enLigne).length} en ligne',
           actions: [
+            TextButton.icon(
+              onPressed: () => context.go('/parc/archives'),
+              icon: const Icon(Icons.inventory_2_outlined, size: 15),
+              label: const Text('Biens archivés'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.inkSoft,
+                textStyle: GoogleFonts.mavenPro(
+                    fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 8),
             FilledButton(
               onPressed: () => context.go('/parc/nouveau'),
               style: FilledButton.styleFrom(

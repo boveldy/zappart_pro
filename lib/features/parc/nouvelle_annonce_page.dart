@@ -22,8 +22,13 @@ import '../../theme/app_theme.dart';
 /// la marketplace, sans changer de document (le lien `bail.house_ref` est
 /// préservé).
 class NouvelleAnnoncePage extends StatefulWidget {
-  const NouvelleAnnoncePage({super.key, this.completerId});
+  const NouvelleAnnoncePage({super.key, this.completerId, this.modifierId});
+
+  /// Bien privé de gérance à compléter puis publier.
   final String? completerId;
+
+  /// Annonce existante à modifier (repart en validation après enregistrement).
+  final String? modifierId;
 
   @override
   State<NouvelleAnnoncePage> createState() => _NouvelleAnnoncePageState();
@@ -34,10 +39,12 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
   bool _seeding = false;
   int _step = 0;
 
+  String? get _sourceId => widget.modifierId ?? widget.completerId;
+
   @override
   void initState() {
     super.initState();
-    if (widget.completerId != null) {
+    if (_sourceId != null) {
       _seeding = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _seed());
     }
@@ -52,10 +59,16 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
     try {
       final snap = await FirebaseFirestore.instance
           .collection('house')
-          .doc(widget.completerId)
+          .doc(_sourceId)
           .get();
       final f = AnnonceForm(ref);
-      if (snap.exists) f.seedFromHouse(House.fromDoc(snap));
+      if (snap.exists) {
+        if (widget.modifierId != null) {
+          f.loadFromDoc(snap);
+        } else {
+          f.seedFromHouse(House.fromDoc(snap));
+        }
+      }
       if (mounted) {
         setState(() {
           _form = f;
@@ -89,21 +102,25 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
         ),
       );
     }
+    final titrePage = widget.modifierId != null
+        ? 'Modifier l\'annonce'
+        : 'Compléter et publier';
     if (_seeding) {
-      return const PageScaffold(
-        title: 'Compléter et publier',
-        child: Center(
+      return PageScaffold(
+        title: titrePage,
+        child: const Center(
             child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.ink)),
       );
     }
-    if (widget.completerId == null) _form ??= AnnonceForm(ref);
+    if (_sourceId == null) _form ??= AnnonceForm(ref);
     if (_form == null) {
-      return const PageScaffold(
-        title: 'Compléter et publier',
-        child: EmptyState('Bien introuvable.'),
+      return PageScaffold(
+        title: titrePage,
+        child: const EmptyState('Bien introuvable.'),
       );
     }
-    final completer = _form!.editRef != null;
+    final modifier = _form!.editionComplete;
+    final completer = _form!.editRef != null && !modifier;
 
     return ChangeNotifierProvider<AnnonceForm>.value(
       value: _form!,
@@ -117,7 +134,7 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (completer) ...[
+                    if (completer || modifier) ...[
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
@@ -127,11 +144,16 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: const Color(0xFFD5E1F2)),
                         ),
-                        child: const Text(
-                          'Vous publiez un bien de votre gérance sur la marketplace. '
-                          'Le bail en cours reste lié à ce bien. Après validation par '
-                          'l\'équipe Zappart, il sera visible des clients.',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF2C4A73)),
+                        child: Text(
+                          modifier
+                              ? 'Vous modifiez une annonce existante. À l\'enregistrement, '
+                                  'elle repasse en validation par l\'équipe Zappart et sort '
+                                  'du marketplace le temps de la revue.'
+                              : 'Vous publiez un bien de votre gérance sur la marketplace. '
+                                  'Le bail en cours reste lié à ce bien. Après validation par '
+                                  'l\'équipe Zappart, il sera visible des clients.',
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF2C4A73)),
                         ),
                       ),
                     ],
@@ -149,6 +171,9 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
                       total: _titres.length,
                       canNext: form.okForStep(_step),
                       submitting: form.submitting,
+                      submitLabel: modifier
+                          ? 'Enregistrer et renvoyer en validation'
+                          : 'Soumettre pour validation',
                       onBack: () {
                         if (_step == 0) {
                           context.go('/parc');
@@ -193,16 +218,19 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
       ));
       return;
     }
-    final completer = f.editRef != null;
+    final modifier = f.editionComplete;
+    final aUnRef = f.editRef != null;
     final ok = await f.submit();
     if (!mounted) return;
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(completer
-            ? "Bien envoyé pour validation. Il rejoindra la marketplace dès son approbation."
-            : "Annonce envoyée pour validation. Elle sera en ligne dès son approbation."),
+        content: Text(modifier
+            ? "Modifications envoyées. L'annonce repasse en validation."
+            : aUnRef
+                ? "Bien envoyé pour validation. Il rejoindra la marketplace dès son approbation."
+                : "Annonce envoyée pour validation. Elle sera en ligne dès son approbation."),
       ));
-      context.go(completer ? '/parc/${f.editRef!.id}' : '/parc');
+      context.go(aUnRef ? '/parc/${f.editRef!.id}' : '/parc');
     }
   }
 }
@@ -243,10 +271,12 @@ class _Footer extends StatelessWidget {
     required this.onBack,
     required this.onNext,
     required this.onSubmit,
+    this.submitLabel = 'Soumettre pour validation',
   });
   final int step, total;
   final bool canNext, submitting;
   final VoidCallback onBack, onNext, onSubmit;
+  final String submitLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +299,7 @@ class _Footer extends StatelessWidget {
                   height: 18,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.white))
-              : Text(last ? 'Soumettre pour validation' : 'Suivant'),
+              : Text(last ? submitLabel : 'Suivant'),
         ),
       ],
     );
@@ -772,9 +802,9 @@ class _StepPhotosState extends State<_StepPhotos> {
       final list = widget.f.photos.putIfAbsent(cat, () => []);
       for (final x in picked) {
         final bytes = await x.readAsBytes();
-        list.add(PickedPhoto(
-          bytes: bytes,
-          mime: x.mimeType ??
+        list.add(PickedPhoto.bytes(
+          bytes,
+          x.mimeType ??
               (x.name.toLowerCase().endsWith('.png')
                   ? 'image/png'
                   : 'image/jpeg'),
@@ -833,13 +863,21 @@ class _StepPhotosState extends State<_StepPhotos> {
                 },
               ),
           ],
-          if (f.piecesSansPhoto.isNotEmpty)
+          if (f.piecesSansPhoto.isNotEmpty && !f.editionComplete)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                   'Pièces sans photo : ${f.piecesSansPhoto.join(', ')}',
                   style:
                       const TextStyle(color: AppTheme.danger, fontSize: 12)),
+            ),
+          if (f.editionComplete)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                  'Vos photos actuelles sont conservées. Ajoutez-en ou '
+                  'retirez-en si besoin (3 minimum).',
+                  style: TextStyle(color: AppTheme.inkSoft, fontSize: 12)),
             ),
         ],
       ),
@@ -931,7 +969,11 @@ class _Thumb extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.memory(photo.bytes, fit: BoxFit.cover),
+            child: photo.estExistante
+                ? Image.network(photo.url!, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        Container(color: AppTheme.panel))
+                : Image.memory(photo.bytes!, fit: BoxFit.cover),
           ),
           if (photo.tropLourde)
             Container(
@@ -1267,6 +1309,14 @@ class _StepRecap extends StatelessWidget {
         break;
       }
     }
+    if (cover == null) {
+      for (final l in f.photos.values) {
+        if (l.isNotEmpty) {
+          cover = l.first;
+          break;
+        }
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1280,7 +1330,9 @@ class _StepRecap extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Image.memory(cover.bytes, fit: BoxFit.cover),
+                    child: cover.estExistante
+                        ? Image.network(cover.url!, fit: BoxFit.cover)
+                        : Image.memory(cover.bytes!, fit: BoxFit.cover),
                   ),
                 ),
               const SizedBox(height: 14),
