@@ -97,10 +97,7 @@ class _PickerSheet extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () async {
-                  final im = await showDialog<Immeuble>(
-                    context: context,
-                    builder: (_) => _ImmeubleFormDialog(repo: repo),
-                  );
+                  final im = await showImmeubleForm(context, repo);
                   if (im != null && context.mounted) {
                     Navigator.pop(context, im);
                   }
@@ -173,27 +170,55 @@ class _Tile extends StatelessWidget {
   }
 }
 
-// ── Formulaire de création d'immeuble ──────────────────────────────────────
+// ── Formulaire de création / modification d'immeuble ───────────────────────
+
+/// Ouvre le formulaire d'immeuble (création si [existant] est nul, sinon
+/// modification). Retourne l'[Immeuble] enregistré, ou `null` si annulé.
+Future<Immeuble?> showImmeubleForm(
+  BuildContext context,
+  ImmeubleRepository repo, {
+  Immeuble? existant,
+}) {
+  return showDialog<Immeuble>(
+    context: context,
+    builder: (_) => _ImmeubleFormDialog(repo: repo, existant: existant),
+  );
+}
 
 class _ImmeubleFormDialog extends StatefulWidget {
-  const _ImmeubleFormDialog({required this.repo});
+  const _ImmeubleFormDialog({required this.repo, this.existant});
   final ImmeubleRepository repo;
+  final Immeuble? existant;
 
   @override
   State<_ImmeubleFormDialog> createState() => _ImmeubleFormDialogState();
 }
 
 class _ImmeubleFormDialogState extends State<_ImmeubleFormDialog> {
-  final _nom = TextEditingController();
-  final _cite = TextEditingController();
-  final _adresse = TextEditingController();
-  final _conciergeNom = TextEditingController();
-  final _conciergeNum = TextEditingController();
-  String _quartier = '';
-  String _zone = '';
+  late final _nom = TextEditingController(text: widget.existant?.nom ?? '');
+  late final _cite = TextEditingController(text: widget.existant?.cite ?? '');
+  late final _adresse =
+      TextEditingController(text: widget.existant?.localisation ?? '');
+  late final _conciergeNom =
+      TextEditingController(text: widget.existant?.conciergenom ?? '');
+  late final _conciergeNum =
+      TextEditingController(text: widget.existant?.conciergenum ?? '');
+  late String _quartier = widget.existant?.quartier ?? '';
+  late String _zone = widget.existant?.zone ?? '';
   double? _lat;
   double? _lng;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final geo = widget.existant?.geolocalisation;
+    if (geo != null) {
+      final c = AnnonceForm.parseLatLng(geo);
+      _lat = c?.$1;
+      _lng = c?.$2;
+    }
+  }
 
   @override
   void dispose() {
@@ -217,18 +242,35 @@ class _ImmeubleFormDialogState extends State<_ImmeubleFormDialog> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      final ref = await widget.repo.create(
-        nom: _nom.text.trim(),
-        quartier: _quartier.trim(),
-        zone: _zone,
-        cite: _cite.text.trim(),
-        localisation: _adresse.text.trim(),
-        geolocalisation: AnnonceForm.mapsLink(_lat!, _lng!),
-        conciergenom: _conciergeNom.text.trim(),
-        conciergenum: _conciergeNum.text.trim(),
-        conciergephoto: '',
-      );
-      final im = await widget.repo.one(ref.id);
+      final String id;
+      if (widget.existant == null) {
+        final ref = await widget.repo.create(
+          nom: _nom.text.trim(),
+          quartier: _quartier.trim(),
+          zone: _zone,
+          cite: _cite.text.trim(),
+          localisation: _adresse.text.trim(),
+          geolocalisation: AnnonceForm.mapsLink(_lat!, _lng!),
+          conciergenom: _conciergeNom.text.trim(),
+          conciergenum: _conciergeNum.text.trim(),
+          conciergephoto: '',
+        );
+        id = ref.id;
+      } else {
+        id = widget.existant!.id;
+        await widget.repo.update(
+          id,
+          nom: _nom.text.trim(),
+          quartier: _quartier.trim(),
+          zone: _zone,
+          cite: _cite.text.trim(),
+          localisation: _adresse.text.trim(),
+          geolocalisation: AnnonceForm.mapsLink(_lat!, _lng!),
+          conciergenom: _conciergeNom.text.trim(),
+          conciergenum: _conciergeNum.text.trim(),
+        );
+      }
+      final im = await widget.repo.one(id);
       if (mounted) Navigator.pop(context, im);
     } catch (_) {
       if (mounted) {
@@ -243,7 +285,9 @@ class _ImmeubleFormDialogState extends State<_ImmeubleFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: Colors.white,
-      title: const Text('Nouvel immeuble', style: TextStyle(fontSize: 16)),
+      title: Text(
+          widget.existant == null ? 'Nouvel immeuble' : 'Modifier l\'immeuble',
+          style: const TextStyle(fontSize: 16)),
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
@@ -349,7 +393,9 @@ class _ImmeubleFormDialogState extends State<_ImmeubleFormDialog> {
                   height: 16,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.white))
-              : const Text('Créer l\'immeuble'),
+              : Text(widget.existant == null
+                  ? 'Créer l\'immeuble'
+                  : 'Enregistrer'),
         ),
       ],
     );

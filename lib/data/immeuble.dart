@@ -70,6 +70,33 @@ class ImmeubleRepository {
     return d.exists ? Immeuble.fromDoc(d) : null;
   }
 
+  /// Met à jour un immeuble. Le trigger backend `propager_immeuble` re-propage
+  /// les champs modifiés sur les `house` rattachées (sans toucher au statut de
+  /// validation).
+  Future<void> update(
+    String id, {
+    required String nom,
+    required String quartier,
+    required String zone,
+    required String cite,
+    required String localisation,
+    required String geolocalisation,
+    required String conciergenom,
+    required String conciergenum,
+  }) =>
+      _col.doc(id).update({
+        'nom': nom.trim(),
+        'quartier': quartier.trim(),
+        'zone': zone,
+        'cite': cite.trim(),
+        'localisation': localisation.trim(),
+        'geolocalisation': geolocalisation,
+        'conciergenom': conciergenom.trim(),
+        'conciergenum': conciergenum.trim(),
+      });
+
+  Future<void> delete(String id) => _col.doc(id).delete();
+
   /// Crée un immeuble et renvoie sa référence.
   Future<DocumentReference<Map<String, dynamic>>> create({
     required String nom,

@@ -19,6 +19,7 @@ class NavItem {
 const kNavItems = <NavItem>[
   NavItem('/', 'Tableau de bord', Icons.grid_view_rounded),
   NavItem('/parc', 'Parc', Icons.home_work_outlined),
+  NavItem('/immeubles', 'Immeubles', Icons.apartment_outlined),
   NavItem('/baux', 'Baux', Icons.description_outlined),
   NavItem('/proprietaires', 'Propriétaires', Icons.people_alt_outlined),
   NavItem('/calendrier', 'Calendrier', Icons.calendar_month_outlined),
