@@ -15,6 +15,7 @@ import '../features/parc/archives_page.dart';
 import '../features/parc/fiche_bien_page.dart';
 import '../features/parc/nouvelle_annonce_page.dart';
 import '../features/parc/parc_page.dart';
+import '../features/proprietaires/proprietaires_page.dart';
 import '../features/reservations/reservations_page.dart';
 import '../features/revenus/revenus_page.dart';
 import '../features/statistiques/statistiques_page.dart';
@@ -90,6 +91,10 @@ GoRouter buildRouter(AuthService auth) {
                 ],
               ),
             ],
+          ),
+          GoRoute(
+            path: '/proprietaires',
+            builder: (_, __) => const ProprietairesPage(),
           ),
           GoRoute(
             path: '/baux',

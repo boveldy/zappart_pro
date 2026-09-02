@@ -9,8 +9,10 @@ import 'package:provider/provider.dart';
 import '../../core/ui.dart';
 import '../../data/bail.dart';
 import '../../data/house.dart';
+import '../../data/proprietaire.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../proprietaires/proprietaire_picker.dart';
 
 /// Création d'un bail (formulaire unique) : locataire, bien (du parc ou bien
 /// privé hors marketplace), conditions. À la validation : 1 doc `baux` +
@@ -26,7 +28,7 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
   // locataire
   final _nom = TextEditingController();
   final _tel = TextEditingController();
-  final _prop = TextEditingController();
+  Proprietaire? _proprio;
   // bien
   String? _houseId; // existant
   bool _bienPrive = false;
@@ -51,7 +53,7 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
   @override
   void dispose() {
     for (final c in [
-      _nom, _tel, _prop, _bienPriveTitre, _loyer, _charges, _commValeur
+      _nom, _tel, _bienPriveTitre, _loyer, _charges, _commValeur
     ]) {
       c.dispose();
     }
@@ -130,8 +132,19 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
                               phone: true),
                         ),
                         const SizedBox(height: 12),
-                        _field(_prop, 'Propriétaire (pour le relevé)',
-                            'Nom du propriétaire', optional: true),
+                        _lbl('Propriétaire du bien (pour le relevé)'),
+                        _ProprioField(
+                          proprio: _proprio,
+                          onPick: () async {
+                            final ref =
+                                context.read<AuthService>().partenaireRef;
+                            if (ref == null) return;
+                            final p = await pickProprietaire(
+                                context, ProprietaireRepository(ref));
+                            if (p != null) setState(() => _proprio = p);
+                          },
+                          onClear: () => setState(() => _proprio = null),
+                        ),
                         const SizedBox(height: 6),
                         const Text(
                           'Le locataire pourra être invité à créer un compte Zappart '
@@ -449,7 +462,12 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
         bienTitre: bienTitre,
         locataireNom: _nom.text,
         locataireTel: _tel.text,
-        proprietaireNom: _prop.text,
+        proprietaireNom: _proprio?.nom ?? '',
+        proprietaireRef: _proprio == null
+            ? null
+            : FirebaseFirestore.instance
+                .collection('proprietaires')
+                .doc(_proprio!.id),
         loyer: _loyerV,
         charges: _chargesV,
         chargesMode: _chargesMode,
@@ -610,4 +628,71 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
           ),
         ),
       );
+}
+
+// ── Sélecteur de propriétaire ─────────────────────────────────────────────
+
+class _ProprioField extends StatelessWidget {
+  const _ProprioField({
+    required this.proprio,
+    required this.onPick,
+    required this.onClear,
+  });
+  final Proprietaire? proprio;
+  final VoidCallback onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    if (proprio == null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: OutlinedButton.icon(
+          onPressed: onPick,
+          icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+          label: const Text('Lier un propriétaire (optionnel)'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppTheme.ink,
+            side: const BorderSide(color: AppTheme.line),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: AppTheme.panel,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.person_outline, size: 18, color: AppTheme.ink),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(proprio!.nom,
+                    style: const TextStyle(
+                        fontSize: 13.5, fontWeight: FontWeight.w700)),
+                if (proprio!.sousTitre.isNotEmpty)
+                  Text(proprio!.sousTitre,
+                      style: const TextStyle(
+                          fontSize: 11.5, color: AppTheme.inkSoft)),
+              ],
+            ),
+          ),
+          TextButton(onPressed: onPick, child: const Text('Changer')),
+          IconButton(
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded, size: 16),
+            color: AppTheme.inkSoft,
+          ),
+        ],
+      ),
+    );
+  }
 }

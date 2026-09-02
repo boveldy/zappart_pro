@@ -60,6 +60,7 @@ class Bail {
     required this.locataireTel,
     required this.locataireLie,
     required this.proprietaireNom,
+    this.proprietaireRefId,
     required this.loyer,
     required this.charges,
     required this.chargesMode,
@@ -87,6 +88,7 @@ class Bail {
   final String locataireTel;
   final bool locataireLie; // le locataire a un compte Zappart
   final String proprietaireNom;
+  final String? proprietaireRefId;
   final double loyer;
   final double charges;
   final ChargesMode chargesMode;
@@ -169,6 +171,9 @@ class Bail {
       locataireTel: (m['locataire_tel'] as String?)?.trim() ?? '',
       locataireLie: m['locataire_user_ref'] is DocumentReference,
       proprietaireNom: (m['proprietaire_nom'] as String?)?.trim() ?? '',
+      proprietaireRefId: m['proprietaire_ref'] is DocumentReference
+          ? (m['proprietaire_ref'] as DocumentReference).id
+          : null,
       loyer: (m['loyer'] as num?)?.toDouble() ?? 0,
       charges: (m['charges'] as num?)?.toDouble() ?? 0,
       chargesMode: chargesModeFrom((m['charges_mode'] as String?) ?? 'forfait'),
@@ -480,6 +485,7 @@ class BailRepository {
     required String locataireNom,
     required String locataireTel,
     required String proprietaireNom,
+    DocumentReference<Map<String, dynamic>>? proprietaireRef,
     required double loyer,
     required double charges,
     required ChargesMode chargesMode,
@@ -503,6 +509,7 @@ class BailRepository {
       'locataire_tel_canonique': canonPhone(locataireTel),
       'encaissement_mode': encaissementMode.name,
       'proprietaire_nom': proprietaireNom.trim(),
+      if (proprietaireRef != null) 'proprietaire_ref': proprietaireRef,
       'loyer': loyer,
       'charges': chargesMode == ChargesMode.forfait ? charges : 0,
       'charges_mode': chargesModeKey(chargesMode),
