@@ -129,15 +129,23 @@ class _Sidebar extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          const SizedBox(height: 8),
-          for (final item in kNavItems)
-            _NavTile(
-              item: item,
-              compact: compact,
-              selected: item.route == current.route,
-              onTap: () => context.go(item.route),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final item in kNavItems)
+                    _NavTile(
+                      item: item,
+                      compact: compact,
+                      selected: item.route == current.route,
+                      onTap: () => context.go(item.route),
+                    ),
+                ],
+              ),
             ),
-          const Spacer(),
+          ),
           const Divider(height: 1),
           _NavTile(
             item: const NavItem('__logout', 'Déconnexion', Icons.logout_rounded),
