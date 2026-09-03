@@ -4,31 +4,64 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../data/permissions.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/brand.dart';
 
-/// Entrée de navigation du shell.
+/// Entrée de navigation du shell. `visible` filtre selon les permissions du
+/// membre connecté (un hôte mono-utilisateur a tous les droits → tout visible).
 class NavItem {
-  const NavItem(this.route, this.label, this.icon);
+  const NavItem(this.route, this.label, this.icon, {this.visible});
   final String route;
   final String label;
   final IconData icon;
+  final bool Function(AuthService)? visible;
 }
 
-const kNavItems = <NavItem>[
+bool _any(AuthService a, List<String> keys) => keys.any(a.can);
+
+final kNavItems = <NavItem>[
   NavItem('/', 'Tableau de bord', Icons.grid_view_rounded),
-  NavItem('/parc', 'Parc', Icons.home_work_outlined),
-  NavItem('/immeubles', 'Immeubles', Icons.apartment_outlined),
-  NavItem('/baux', 'Baux', Icons.description_outlined),
-  NavItem('/proprietaires', 'Propriétaires', Icons.people_alt_outlined),
-  NavItem('/calendrier', 'Calendrier', Icons.calendar_month_outlined),
-  NavItem('/reservations', 'Réservations', Icons.event_available_outlined),
-  NavItem('/revenus', 'Revenus', Icons.account_balance_wallet_outlined),
-  NavItem('/statistiques', 'Statistiques', Icons.insights_outlined),
-  NavItem('/abonnement', 'Abonnement', Icons.workspace_premium_outlined),
+  NavItem('/parc', 'Parc', Icons.home_work_outlined,
+      visible: (a) => _any(a, [
+            ProPerm.biensCreer,
+            ProPerm.biensPublier,
+            ProPerm.biensArchiver,
+            ProPerm.bauxCreer,
+            ProPerm.financesVoir,
+          ])),
+  NavItem('/immeubles', 'Immeubles', Icons.apartment_outlined,
+      visible: (a) => _any(a, [ProPerm.immeublesGerer, ProPerm.bauxCreer])),
+  NavItem('/baux', 'Baux', Icons.description_outlined,
+      visible: (a) => _any(a, [
+            ProPerm.bauxCreer,
+            ProPerm.bauxEncaisser,
+            ProPerm.bauxDepenses,
+            ProPerm.financesVoir,
+          ])),
+  NavItem('/proprietaires', 'Propriétaires', Icons.people_alt_outlined,
+      visible: (a) => _any(a, [ProPerm.proprietairesGerer, ProPerm.financesVoir])),
+  NavItem('/calendrier', 'Calendrier', Icons.calendar_month_outlined,
+      visible: (a) => _any(a, [ProPerm.biensCreer, ProPerm.bauxCreer])),
+  NavItem('/reservations', 'Réservations', Icons.event_available_outlined,
+      visible: (a) => _any(a, [ProPerm.biensCreer, ProPerm.financesVoir])),
+  NavItem('/revenus', 'Revenus', Icons.account_balance_wallet_outlined,
+      visible: (a) => a.can(ProPerm.financesVoir)),
+  NavItem('/statistiques', 'Statistiques', Icons.insights_outlined,
+      visible: (a) => a.can(ProPerm.financesVoir)),
+  NavItem('/equipe', 'Équipe', Icons.groups_2_outlined,
+      visible: (a) => a.can(ProPerm.equipeGerer)),
+  NavItem('/journal', 'Historique', Icons.history_rounded,
+      visible: (a) => a.can(ProPerm.journalVoir)),
+  NavItem('/abonnement', 'Abonnement', Icons.workspace_premium_outlined,
+      visible: (a) => a.can(ProPerm.facturationGerer)),
   NavItem('/parametres', 'Paramètres', Icons.settings_outlined),
 ];
+
+/// Les entrées visibles pour le membre connecté.
+List<NavItem> navItemsFor(AuthService auth) =>
+    kNavItems.where((n) => n.visible == null || n.visible!(auth)).toList();
 
 /// Coquille commune : barre latérale (pleine ou réduite selon la largeur) +
 /// barre haute + zone de contenu centrée. Reçoit l'écran actif via
@@ -43,18 +76,19 @@ class AppShell extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < AppTheme.breakpointCompact;
     final location = GoRouterState.of(context).uri.path;
-    final current = kNavItems.firstWhere(
+    final items = navItemsFor(context.watch<AuthService>());
+    final current = items.firstWhere(
       (n) => n.route == '/'
           ? location == '/'
           : location.startsWith(n.route),
-      orElse: () => kNavItems.first,
+      orElse: () => items.first,
     );
 
     return Scaffold(
       backgroundColor: AppTheme.bg,
       body: Row(
         children: [
-          _Sidebar(compact: compact, current: current),
+          _Sidebar(compact: compact, current: current, items: items),
           Expanded(
             child: Column(
               children: [
@@ -81,9 +115,11 @@ class AppShell extends StatelessWidget {
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.compact, required this.current});
+  const _Sidebar(
+      {required this.compact, required this.current, required this.items});
   final bool compact;
   final NavItem current;
+  final List<NavItem> items;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +171,7 @@ class _Sidebar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final item in kNavItems)
+                  for (final item in items)
                     _NavTile(
                       item: item,
                       compact: compact,

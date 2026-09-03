@@ -28,8 +28,8 @@ class _StatistiquesPageState extends State<StatistiquesPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
-    if (ref == null || !auth.estHote) {
+    final ref = auth.agenceRef;
+    if (ref == null || !auth.aGerance) {
       return const PageScaffold(
         title: 'Statistiques',
         child: EmptyState('Votre compte est prestataire — pas de parc à suivre.'),

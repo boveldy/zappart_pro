@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/ui.dart';
 import '../../data/bail.dart';
+import '../../data/permissions.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'bail_quittance.dart';
@@ -19,7 +20,7 @@ class FicheBailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
+    final ref = auth.agenceRef;
     if (ref == null) return const _Shell(child: EmptyState('Session en cours…'));
     final repo = BailRepository(ref);
 
@@ -51,6 +52,10 @@ class FicheBailPage extends StatelessWidget {
                   repo: repo,
                   agence: auth.displayName,
                   lectureSeule: auth.lectureSeule,
+                  canEncaisser: auth.can(ProPerm.bauxEncaisser),
+                  canDepenses: auth.can(ProPerm.bauxDepenses),
+                  canBauxAdmin: auth.can(ProPerm.bauxCloturer) ||
+                      auth.can(ProPerm.bauxProlonger),
                 ),
               ),
             ),
@@ -98,6 +103,9 @@ class _Content extends StatelessWidget {
     required this.repo,
     required this.agence,
     this.lectureSeule = false,
+    this.canEncaisser = true,
+    this.canDepenses = true,
+    this.canBauxAdmin = true,
   });
   final Bail bail;
   final List<Echeance> echeances;
@@ -110,6 +118,11 @@ class _Content extends StatelessWidget {
   /// Abonnement suspendu (> 30 j) → aucune écriture : les boutons d'action sont
   /// neutralisés et un encart l'explique.
   final bool lectureSeule;
+
+  /// Permissions du membre connecté (un hôte mono-utilisateur a tout).
+  final bool canEncaisser; // marquer payé, valider/rejeter un signalement
+  final bool canDepenses; // saisir / supprimer une dépense
+  final bool canBauxAdmin; // prolonger, clôturer, mode d'encaissement
 
   static final _fmt = NumberFormat('#,###', 'fr_FR');
   static final _df = DateFormat('d MMM yyyy', 'fr');
@@ -415,6 +428,7 @@ class _Content extends StatelessWidget {
                       child: const Text('Quittance'),
                     )
                   : (!lectureSeule &&
+                          canEncaisser &&
                           (s == EStatut.du ||
                               s == EStatut.retard ||
                               s == EStatut.partiel))
@@ -464,7 +478,7 @@ class _Content extends StatelessWidget {
             )
           else
             for (final d in depenses) _depRow(context, d),
-          if (!lectureSeule) ...[
+          if (!lectureSeule && canDepenses) ...[
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerLeft,
@@ -519,7 +533,7 @@ class _Content extends StatelessWidget {
             Text('${_fmt.format(d.montant.round())} FCFA',
                 style: const TextStyle(
                     fontSize: 12.5, fontWeight: FontWeight.w700)),
-            if (!lectureSeule)
+            if (!lectureSeule && canDepenses)
               IconButton(
                 onPressed: () => _supprDepense(context, d),
                 icon: const Icon(Icons.close_rounded, size: 15),
@@ -553,7 +567,7 @@ class _Content extends StatelessWidget {
             style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
           ),
         ),
-        if (!lectureSeule) ...[
+        if (!lectureSeule && canBauxAdmin) ...[
           const SizedBox(width: 10),
           TextButton(
             onPressed: () => _openProlonger(context),
@@ -612,6 +626,11 @@ class _Content extends StatelessWidget {
               'Abonnement suspendu — renouvelez pour confirmer ce paiement.',
               style: TextStyle(fontSize: 11, color: Color(0xFF8A4033)),
             )
+          else if (!canEncaisser)
+            const Text(
+              'Vous n\'avez pas le droit de confirmer un encaissement.',
+              style: TextStyle(fontSize: 11, color: AppTheme.inkSoft),
+            )
           else
           Row(children: [
             InkWell(
@@ -631,7 +650,8 @@ class _Content extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             TextButton(
-              onPressed: () => repo.rejeterSignalement(s.id),
+              onPressed: () => repo.rejeterSignalement(s.id,
+                  journalCible: '${bail.bienTitre} · ${bail.locataireNom}'),
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF8A4033),
                 padding: EdgeInsets.zero,
@@ -688,6 +708,7 @@ class _Content extends StatelessWidget {
         echeanceId: cible.id,
         montant: s.montant > 0 ? s.montant : cible.montantDu,
         date: s.date ?? DateTime.now(),
+        journalCible: '${bail.bienTitre} · ${bail.locataireNom}',
         methode: s.methode.isEmpty
             ? (s.canal == 'en_ligne' ? 'En ligne' : 'Mobile money')
             : s.methode,
@@ -712,7 +733,7 @@ class _Content extends StatelessWidget {
                 : 'Le locataire paie en ligne ; Zappart vous reverse.',
             style: const TextStyle(fontSize: 11.5, color: AppTheme.inkSoft),
           ),
-          if (bail.actif && !lectureSeule) ...[
+          if (bail.actif && !lectureSeule && canBauxAdmin) ...[
             const SizedBox(height: 10),
             OutlinedButton(
               onPressed: () => repo.setEncaissementMode(
@@ -720,6 +741,7 @@ class _Content extends StatelessWidget {
                 m == EncaissementMode.direct
                     ? EncaissementMode.zappart
                     : EncaissementMode.direct,
+                journalCible: '${bail.bienTitre} · ${bail.locataireNom}',
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.ink,
@@ -753,7 +775,10 @@ class _Content extends StatelessWidget {
           _actBtn(
             'Marquer un loyer payé',
             filled: true,
-            onTap: (bail.actif && prochaine.isNotEmpty && !lectureSeule)
+            onTap: (bail.actif &&
+                    prochaine.isNotEmpty &&
+                    !lectureSeule &&
+                    canEncaisser)
                 ? () => _openMarquerPaye(context, prochaine.first)
                 : null,
           ),
@@ -761,18 +786,20 @@ class _Content extends StatelessWidget {
           _actBtn('Relevé de gérance', onTap: () => _openReleve(context)),
           const SizedBox(height: 8),
           _actBtn('Relancer le locataire', onTap: () => _relance(context)),
-          if (bail.actif) ...[
+          if (bail.actif && canBauxAdmin) ...[
             const SizedBox(height: 8),
             _actBtn('Prolonger le bail',
                 onTap: lectureSeule ? null : () => _openProlonger(context)),
           ],
-          const SizedBox(height: 8),
-          _actBtn('Clôturer le bail',
-              danger: true,
-              onTap: (bail.actif && !lectureSeule)
-                  ? () => _openCloture(context)
-                  : null),
-          if (_estVierge) ...[
+          if (canBauxAdmin) ...[
+            const SizedBox(height: 8),
+            _actBtn('Clôturer le bail',
+                danger: true,
+                onTap: (bail.actif && !lectureSeule)
+                    ? () => _openCloture(context)
+                    : null),
+          ],
+          if (_estVierge && canBauxAdmin) ...[
             const SizedBox(height: 8),
             _actBtn('Supprimer ce bail (créé par erreur)',
                 danger: true,
@@ -817,7 +844,8 @@ class _Content extends StatelessWidget {
     );
     if (ok != true) return;
     try {
-      await repo.supprimerBailVierge(bail.id, echeances.map((e) => e.id));
+      await repo.supprimerBailVierge(bail.id, echeances.map((e) => e.id),
+          journalCible: '${bail.bienTitre} · ${bail.locataireNom}');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Bail supprimé.')));
@@ -984,7 +1012,11 @@ class _Content extends StatelessWidget {
         ],
       ),
     );
-    if (ok == true) await repo.supprimerDepense(d.id);
+    if (ok == true) {
+      await repo.supprimerDepense(d.id,
+          journalCible:
+              '${bail.bienTitre} · ${bail.locataireNom} — ${d.libelle.isEmpty ? d.categorie : d.libelle}');
+    }
   }
 
   Future<void> _openReleve(BuildContext context) async {
@@ -1084,6 +1116,8 @@ class _MarquerPayeDialogState extends State<_MarquerPayeDialog> {
         partiel: _partiel && m < widget.echeance.montantDu,
         date: _date,
         methode: _methode,
+        journalCible:
+            '${widget.bail.bienTitre} · ${widget.bail.locataireNom}',
       );
       if (mounted) {
         await BailQuittance.generer(
@@ -1296,6 +1330,8 @@ class _DepenseDialogState extends State<_DepenseDialog> {
         libelle: _libelle.text,
         charge: _charge,
         date: _date,
+        journalCible:
+            '${widget.bail.bienTitre} · ${widget.bail.locataireNom}',
       );
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
@@ -1731,6 +1767,8 @@ class _ClotureDialogState extends State<_ClotureDialog> {
         cautionRetenue: _retV,
         cautionNote: _note.text,
         echeancesAAnnuler: _aAnnuler,
+        journalCible:
+            '${widget.bail.bienTitre} · ${widget.bail.locataireNom}',
       );
       if (_remettreEnLigne && widget.bail.houseRefId != null) {
         await widget.repo.setBienActif(widget.bail.houseRefId!, true);

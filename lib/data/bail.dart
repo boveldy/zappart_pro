@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
+import 'journal_pro.dart';
+
 /// Modèle « Baux & loyers » (couche 2) — collections Firestore `baux` et
 /// `echeances`, écrites en direct par l'hôte (aucune Cloud Function).
 ///
@@ -431,6 +433,16 @@ class BailRepository {
   CollectionReference<Map<String, dynamic>> get _depenses =>
       _db.collection('depenses');
 
+  Future<void> _log(String action, String cible, {num? montant, String? bailId}) =>
+      Journal.log(
+        agenceRef: partenaireRef,
+        action: action,
+        cibleType: 'bail',
+        cibleLibelle: cible,
+        cibleRef: bailId == null ? null : _baux.doc(bailId),
+        montant: montant,
+      );
+
   Stream<List<Bail>> baux() => _baux
       .where('partenaire_ref', isEqualTo: partenaireRef)
       .limit(300)
@@ -446,7 +458,8 @@ class BailRepository {
   /// Supprime un bail **créé par erreur** (jamais encaissé) : soft-delete du
   /// bail + annulation de ses échéances. Un bail avec paiement se **clôture**.
   Future<void> supprimerBailVierge(
-      String bailId, Iterable<String> echeanceIds) async {
+      String bailId, Iterable<String> echeanceIds,
+      {String journalCible = ''}) async {
     final batch = _db.batch();
     batch.update(_baux.doc(bailId),
         {'statut': 'supprime', 'supprime_le': FieldValue.serverTimestamp()});
@@ -454,6 +467,7 @@ class BailRepository {
       batch.update(_echeances.doc(id), {'statut': 'annule'});
     }
     await batch.commit();
+    await _log('bail.supprime', journalCible, bailId: bailId);
   }
 
   /// Toutes les échéances du partenaire (pour le dashboard + les retards).
@@ -548,6 +562,8 @@ class BailRepository {
     }
 
     await batch.commit();
+    await _log('bail.cree', '$bienTitre · $locataireNom',
+        bailId: bailRef.id, montant: loyer);
     return bailRef.id;
   }
 
@@ -557,13 +573,16 @@ class BailRepository {
     required bool partiel,
     required DateTime date,
     required String methode,
-  }) =>
-      _echeances.doc(echeanceId).update({
-        'statut': partiel ? 'partiel' : 'paye',
-        'montant_paye': montant,
-        'date_paiement': Timestamp.fromDate(date),
-        'methode': methode,
-      });
+    String journalCible = '',
+  }) async {
+    await _echeances.doc(echeanceId).update({
+      'statut': partiel ? 'partiel' : 'paye',
+      'montant_paye': montant,
+      'date_paiement': Timestamp.fromDate(date),
+      'methode': methode,
+    });
+    await _log('echeance.payee', journalCible, montant: montant);
+  }
 
   // ── Dépenses ──────────────────────────────────────────────────────────────
 
@@ -586,18 +605,26 @@ class BailRepository {
     required String libelle,
     required DepenseCharge charge,
     required DateTime date,
-  }) =>
-      _depenses.add({
-        'partenaire_ref': partenaireRef,
-        'bail_ref': _baux.doc(bailId),
-        if (houseRef != null) 'house_ref': houseRef,
-        'montant': montant,
-        'categorie': categorie,
-        'libelle': libelle.trim(),
-        'charge': charge.name,
-        'date': Timestamp.fromDate(date),
-        'created_at': FieldValue.serverTimestamp(),
-      });
+    String journalCible = '',
+  }) async {
+    await _depenses.add({
+      'partenaire_ref': partenaireRef,
+      'bail_ref': _baux.doc(bailId),
+      if (houseRef != null) 'house_ref': houseRef,
+      'montant': montant,
+      'categorie': categorie,
+      'libelle': libelle.trim(),
+      'charge': charge.name,
+      'date': Timestamp.fromDate(date),
+      'created_at': FieldValue.serverTimestamp(),
+    });
+    await _log(
+      'depense.ajoutee',
+      journalCible.isEmpty ? libelle.trim() : '$journalCible — ${libelle.trim()}',
+      montant: montant,
+      bailId: bailId,
+    );
+  }
 
   /// Toutes les dépenses du partenaire (relevé par propriétaire).
   Stream<List<Depense>> depenses() => _depenses
@@ -606,7 +633,10 @@ class BailRepository {
       .snapshots()
       .map((s) => s.docs.map(Depense.fromDoc).toList());
 
-  Future<void> supprimerDepense(String id) => _depenses.doc(id).delete();
+  Future<void> supprimerDepense(String id, {String journalCible = ''}) async {
+    await _depenses.doc(id).delete();
+    await _log('depense.supprimee', journalCible);
+  }
 
   /// Retire / remet un bien sur le marketplace (bascule `active`). Best-effort :
   /// échoue silencieusement pour un bien « privé » (jamais publié).
@@ -616,8 +646,12 @@ class BailRepository {
     } catch (_) {/* bien privé ou déjà dans cet état */}
   }
 
-  Future<void> setEncaissementMode(String bailId, EncaissementMode mode) =>
-      _baux.doc(bailId).update({'encaissement_mode': mode.name});
+  Future<void> setEncaissementMode(String bailId, EncaissementMode mode,
+      {String journalCible = ''}) async {
+    await _baux.doc(bailId).update({'encaissement_mode': mode.name});
+    await _log('encaissement.change', '$journalCible → ${mode.name}',
+        bailId: bailId);
+  }
 
   /// Prolonge un bail : ajoute `moisEnPlus` échéances à la suite de la dernière
   /// période existante (loyer révisable), et met à jour `duree_mois`.
@@ -671,6 +705,9 @@ class BailRepository {
       'prolonge_le': FieldValue.serverTimestamp(),
     });
     await batch.commit();
+    await _log('bail.prolonge',
+        '${bail.bienTitre} · ${bail.locataireNom} (+$nb mois)',
+        bailId: bail.id);
   }
 
   // ── Signalements de paiement de loyer ────────────────────────────────────
@@ -703,8 +740,10 @@ class BailRepository {
                 (b.date ?? DateTime(2000)).compareTo(a.date ?? DateTime(2000))));
 
   /// Rejette un signalement (le loyer n'a pas été reçu).
-  Future<void> rejeterSignalement(String id) =>
-      _signalements.doc(id).update({'statut': 'rejete'});
+  Future<void> rejeterSignalement(String id, {String journalCible = ''}) async {
+    await _signalements.doc(id).update({'statut': 'rejete'});
+    await _log('signalement.rejete', journalCible);
+  }
 
   /// Valide un signalement : marque l'échéance payée + clôt le signalement.
   Future<void> validerSignalement({
@@ -713,6 +752,7 @@ class BailRepository {
     required double montant,
     required DateTime date,
     required String methode,
+    String journalCible = '',
   }) async {
     final batch = _db.batch();
     batch.update(_echeances.doc(echeanceId), {
@@ -723,6 +763,7 @@ class BailRepository {
     });
     batch.update(_signalements.doc(signalementId), {'statut': 'valide'});
     await batch.commit();
+    await _log('signalement.valide', journalCible, montant: montant);
   }
 
   // ── Clôture de bail + solde de caution ────────────────────────────────────
@@ -737,6 +778,7 @@ class BailRepository {
     required double cautionRetenue,
     required String cautionNote,
     required List<String> echeancesAAnnuler,
+    String journalCible = '',
   }) async {
     final batch = _db.batch();
     final resilie = motif == 'Résiliation' || motif == 'Départ anticipé';
@@ -758,5 +800,6 @@ class BailRepository {
       batch.update(_echeances.doc(id), {'statut': 'annule'});
     }
     await batch.commit();
+    await _log('bail.cloture', '$journalCible ($motif)', bailId: bailId);
   }
 }

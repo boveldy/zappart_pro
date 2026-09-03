@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/ui.dart';
 import '../../data/house.dart';
 import '../../data/immeuble.dart';
+import '../../data/permissions.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../parc/immeuble_sheet.dart';
@@ -18,19 +19,20 @@ class ImmeublesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
+    final ref = auth.agenceRef;
     if (ref == null) {
       return const PageScaffold(
         title: 'Immeubles',
         child: EmptyState('Fiche partenaire en cours de liaison…'),
       );
     }
-    if (!auth.estHote) {
+    if (!auth.aGerance) {
       return const PageScaffold(
         title: 'Immeubles',
         child: EmptyState('Réservé aux comptes hôte / agence.'),
       );
     }
+    final canGerer = auth.can(ProPerm.immeublesGerer);
     final repo = ImmeubleRepository(ref);
     final houseRepo = HouseRepository(ref);
 
@@ -38,6 +40,7 @@ class ImmeublesPage extends StatelessWidget {
       title: 'Immeubles',
       subtitle: 'Les infos communes aux logements d\'un même bâtiment',
       actions: [
+        if (canGerer)
         FilledButton(
           onPressed: () => showImmeubleForm(context, repo),
           style: FilledButton.styleFrom(
@@ -140,18 +143,20 @@ class _Row extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => showImmeubleForm(context, repo, existant: im),
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            color: AppTheme.inkSoft,
-            tooltip: 'Modifier',
-          ),
-          IconButton(
-            onPressed: () => _confirmDelete(context),
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            color: const Color(0xFF8A4033),
-            tooltip: 'Supprimer',
-          ),
+          if (context.read<AuthService>().can(ProPerm.immeublesGerer)) ...[
+            IconButton(
+              onPressed: () => showImmeubleForm(context, repo, existant: im),
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              color: AppTheme.inkSoft,
+              tooltip: 'Modifier',
+            ),
+            IconButton(
+              onPressed: () => _confirmDelete(context),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              color: const Color(0xFF8A4033),
+              tooltip: 'Supprimer',
+            ),
+          ],
         ],
       ),
     );

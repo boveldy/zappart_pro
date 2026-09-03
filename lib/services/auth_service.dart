@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../data/journal_pro.dart';
+import '../data/permissions.dart';
 import 'abonnement.dart';
 
 /// État d'accès d'un compte à Zappart Pro.
@@ -18,12 +20,17 @@ enum ProAccess {
   /// remplir la demande d'inscription.
   notPartner,
 
+  /// Connecté, aucune fiche partenaire À SOI mais une invitation d'équipe
+  /// ouverte porte cet e-mail → écran « Rejoindre {agence} ».
+  invitePending,
+
   /// Connecté, fiche partenaire créée mais pas encore activée par l'admin
   /// (`actif: false` → `est_hote`/`est_prestataire` encore faux). Demande en
   /// cours de validation, ou fiche archivée.
   pending,
 
-  /// Connecté + fiche partenaire liée ET activée → accès autorisé.
+  /// Connecté + fiche partenaire liée ET activée, OU membre d'équipe actif
+  /// (`membres_pro`) → accès autorisé.
   partner,
 }
 
@@ -49,7 +56,18 @@ class AuthService extends ChangeNotifier {
   Map<String, dynamic>? _partDoc;
   String? _partDocPath;
 
+  // ── Équipe (multi-utilisateur) ────────────────────────────────────────────
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _membreSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _inviteSub;
+  Map<String, dynamic>? _membreDoc;
+  bool _membreDocLoaded = false;
+  QueryDocumentSnapshot<Map<String, dynamic>>? _inviteDoc;
+  bool _bootstrapTried = false;
+
   User? get user => _user;
+
+  /// Fiche partenaire pointée par `users.partenaire_ref` (compte hôte
+  /// « propriétaire » du compte). `null` pour un employé invité.
   DocumentReference<Map<String, dynamic>>? get partenaireRef {
     final raw = _userDoc?['partenaire_ref'];
     return raw is DocumentReference<Map<String, dynamic>> ? raw : null;
@@ -57,6 +75,53 @@ class AuthService extends ChangeNotifier {
 
   bool get estHote => _userDoc?['est_hote'] == true;
   bool get estPrestataire => _userDoc?['est_prestataire'] == true;
+
+  // ── Rôle & permissions du membre connecté ─────────────────────────────────
+
+  /// Doc `membres_pro/{uid}` en statut `actif`, sinon `null`.
+  bool get isMembreActif => _membreDoc?['statut'] == 'actif';
+
+  /// Rôle du membre connecté. `admin` par défaut pour un hôte historique
+  /// (compte mono-utilisateur : tous les droits).
+  ProRole get membreRole => isMembreActif
+      ? ProRole.fromCode(_membreDoc?['role'] as String?)
+      : ProRole.admin;
+
+  /// Fiche agence effective : celle du membre actif, sinon celle de l'hôte.
+  DocumentReference<Map<String, dynamic>>? get agenceRef {
+    if (isMembreActif) {
+      final raw = _membreDoc?['partenaire_ref'];
+      if (raw is DocumentReference<Map<String, dynamic>>) return raw;
+    }
+    return partenaireRef;
+  }
+
+  /// Permissions effectives. Membre actif → sa map résolue ; hôte historique
+  /// sans `membres_pro` → tous les droits (aucune régression) ; sinon aucun.
+  Map<String, bool> get perms {
+    if (isMembreActif) {
+      final raw = (_membreDoc?['permissions'] as Map?) ?? const {};
+      return {for (final k in ProPerm.all) k: raw[k] == true};
+    }
+    if (estHote || estPrestataire) {
+      return {for (final k in ProPerm.all) k: true};
+    }
+    return {for (final k in ProPerm.all) k: false};
+  }
+
+  /// Le membre connecté détient-il la permission `key` ?
+  bool can(String key) => perms[key] == true;
+
+  /// A accès à l'espace de gérance (hôte historique OU employé d'équipe actif).
+  /// Un prestataire pur reste `false`.
+  bool get aGerance => isMembreActif || estHote;
+
+  /// Invitation d'équipe ouverte pour cet e-mail (écran « Rejoindre »).
+  bool get hasInvitePending => _inviteDoc != null;
+  String get inviteAgenceNom =>
+      (_inviteDoc?.data()['agence_nom'] as String?)?.trim() ?? 'une agence';
+  String get inviteRoleLabel =>
+      ProRole.fromCode(_inviteDoc?.data()['role'] as String?).label;
 
   /// Abonnement du partenaire (champs `abo_*` sur la fiche `Partenaires`).
   /// « Découverte » tant que la fiche n'est pas chargée.
@@ -75,8 +140,15 @@ class AuthService extends ChangeNotifier {
 
   ProAccess get access {
     if (_user == null) return ProAccess.loggedOut;
-    if (!_userDocLoaded) return ProAccess.loading;
-    if (partenaireRef == null) return ProAccess.notPartner;
+    if (!_userDocLoaded || !_membreDocLoaded) return ProAccess.loading;
+
+    // Employé d'équipe actif (`membres_pro`) → accès, quel que soit `est_hote`.
+    if (isMembreActif) return ProAccess.partner;
+
+    if (partenaireRef == null) {
+      // Pas de fiche à soi : soit on a été invité dans une agence, soit rien.
+      return hasInvitePending ? ProAccess.invitePending : ProAccess.notPartner;
+    }
     // `est_hote` / `est_prestataire` ne passent à true que quand l'admin active
     // la fiche (`actif: true`) — cf. trigger `partenaire_link.py`. Tant que
     // c'est faux, la demande est en cours de validation (ou la fiche a été
@@ -156,6 +228,14 @@ class AuthService extends ChangeNotifier {
     _partDocSub = null;
     _partDoc = null;
     _partDocPath = null;
+    _membreSub?.cancel();
+    _membreSub = null;
+    _membreDoc = null;
+    _membreDocLoaded = false;
+    _inviteSub?.cancel();
+    _inviteSub = null;
+    _inviteDoc = null;
+    _bootstrapTried = false;
 
     if (u != null) {
       _userDocSub = _db
@@ -165,21 +245,125 @@ class AuthService extends ChangeNotifier {
           .listen((snap) {
         _userDoc = snap.data();
         _userDocLoaded = true;
+        Journal.configure(uid: u.uid, nom: displayName);
         _syncPartenaireSub();
+        _maybeBootstrapMembre();
         notifyListeners();
       }, onError: (_) {
         _userDocLoaded = true;
         notifyListeners();
       });
+
+      // Rôle & permissions de l'employé (doc indexé par l'uid).
+      _membreSub = _db
+          .collection('membres_pro')
+          .doc(u.uid)
+          .snapshots()
+          .listen((snap) {
+        _membreDoc = snap.data();
+        _membreDocLoaded = true;
+        _syncPartenaireSub();
+        _maybeBootstrapMembre();
+        notifyListeners();
+      }, onError: (_) {
+        _membreDocLoaded = true;
+        notifyListeners();
+      });
+
+      // Invitation d'équipe ouverte pour cet e-mail (écran « Rejoindre »).
+      // Filtre mono-champ (pas d'index composite) ; `statut` filtré côté client.
+      final mail = (u.email ?? '').trim().toLowerCase();
+      if (mail.isNotEmpty) {
+        _inviteSub = _db
+            .collection('invitations_pro')
+            .where('email', isEqualTo: mail)
+            .snapshots()
+            .listen((snap) {
+          final open = snap.docs
+              .where((d) => d.data()['statut'] == 'ouverte')
+              .toList();
+          _inviteDoc = open.isEmpty ? null : open.first;
+          notifyListeners();
+        }, onError: (_) {});
+      }
     }
     notifyListeners();
   }
 
-  /// (Re)abonne au doc `Partenaires` pointé par `partenaire_ref` — pour lire
+  /// Auto-réparation : un hôte historique (`est_hote`, fiche à lui) sans
+  /// `membres_pro` se crée sa fiche `admin` — pour que rôles & journal
+  /// fonctionnent sans migration préalable. Une seule tentative par session.
+  Future<void> _maybeBootstrapMembre() async {
+    if (_bootstrapTried) return;
+    final u = _user;
+    if (u == null || !_userDocLoaded || !_membreDocLoaded) return;
+    if (_membreDoc != null) return; // déjà membre
+    if (!estHote) return; // employé non lié / demande en attente : rien à faire
+    final pref = partenaireRef;
+    if (pref == null) return;
+    _bootstrapTried = true;
+    try {
+      await _db.collection('membres_pro').doc(u.uid).set(<String, dynamic>{
+        'partenaire_ref': pref,
+        'role': ProRole.admin.code,
+        'statut': 'actif',
+        'email': (u.email ?? '').trim().toLowerCase(),
+        'nom': displayName,
+        'permissions': resolvePermissions(ProRole.admin, null),
+        'permissions_override': <String, dynamic>{},
+        'created_at': FieldValue.serverTimestamp(),
+        'joined_at': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      _bootstrapTried = false; // on retentera au prochain changement
+    }
+  }
+
+  /// L'invité rejoint l'agence : crée son `membres_pro/{uid}` à partir de
+  /// l'invitation ouverte et marque celle-ci acceptée. Retourne `null` si
+  /// succès, sinon un message lisible.
+  Future<String?> acceptInvitation() async {
+    final u = _user;
+    final inv = _inviteDoc;
+    if (u == null) return 'Votre session a expiré. Reconnectez-vous.';
+    if (inv == null) return 'Aucune invitation en attente.';
+    final data = inv.data();
+    try {
+      final batch = _db.batch()
+        ..set(_db.collection('membres_pro').doc(u.uid), <String, dynamic>{
+          'partenaire_ref': data['partenaire_ref'],
+          'role': data['role'],
+          'statut': 'actif',
+          'email': (u.email ?? '').trim().toLowerCase(),
+          'nom': displayName,
+          'permissions': data['permissions'] ?? <String, dynamic>{},
+          'permissions_override': data['permissions_override'] ?? <String, dynamic>{},
+          'invitation_id': inv.id,
+          'created_at': FieldValue.serverTimestamp(),
+          'joined_at': FieldValue.serverTimestamp(),
+        })
+        ..update(inv.reference, <String, dynamic>{
+          'statut': 'acceptee',
+          'accepte_le': FieldValue.serverTimestamp(),
+        });
+      await batch.commit();
+      return null;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        return 'Invitation refusée par le serveur. Elle a peut-être été annulée.';
+      }
+      return 'Erreur (${e.code}). Réessayez.';
+    } catch (_) {
+      return 'Une erreur est survenue. Réessayez.';
+    }
+  }
+
+  /// (Re)abonne au doc `Partenaires` de l'agence effective (`agenceRef` : la
+  /// fiche de l'employé si membre, sinon celle de l'hôte) — pour lire
   /// l'abonnement (`abo_*`) en temps réel. Ne resouscrit que si la référence
   /// a changé.
   void _syncPartenaireSub() {
-    final ref = partenaireRef;
+    final ref = agenceRef;
     if (ref?.path == _partDocPath) return;
     _partDocSub?.cancel();
     _partDocSub = null;
@@ -229,6 +413,8 @@ class AuthService extends ChangeNotifier {
     _authSub?.cancel();
     _userDocSub?.cancel();
     _partDocSub?.cancel();
+    _membreSub?.cancel();
+    _inviteSub?.cancel();
     super.dispose();
   }
 }

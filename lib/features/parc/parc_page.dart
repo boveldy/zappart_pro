@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/ui.dart';
 import '../../data/house.dart';
+import '../../data/permissions.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -26,14 +27,8 @@ class _ParcPageState extends State<ParcPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
-    if (ref == null) {
-      return const PageScaffold(
-        title: 'Parc',
-        child: EmptyState('Fiche partenaire en cours de liaison…'),
-      );
-    }
-    if (!auth.estHote) {
+    final ref = auth.agenceRef;
+    if (!auth.aGerance || ref == null) {
       return const PageScaffold(
         title: 'Parc',
         child: EmptyState(
@@ -41,6 +36,7 @@ class _ParcPageState extends State<ParcPage> {
         ),
       );
     }
+    final canCreer = auth.can(ProPerm.biensCreer);
     final repo = HouseRepository(ref);
 
     return StreamBuilder<List<House>>(
@@ -76,21 +72,23 @@ class _ParcPageState extends State<ParcPage> {
                     fontSize: 12.5, fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: () => context.go('/parc/nouveau'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.ink,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                textStyle: GoogleFonts.mavenPro(
-                    fontSize: 13, fontWeight: FontWeight.w600),
+            if (canCreer) ...[
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () => context.go('/parc/nouveau'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.ink,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  textStyle: GoogleFonts.mavenPro(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                child: const Text('＋ Ajouter une annonce'),
               ),
-              child: const Text('＋ Ajouter une annonce'),
-            ),
+            ],
           ],
           child: Column(
             children: [

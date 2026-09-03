@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/ui.dart';
 import '../../data/house.dart';
+import '../../data/permissions.dart';
 import '../../data/stats_repository.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
@@ -19,7 +20,7 @@ class FicheBienPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ref = context.watch<AuthService>().partenaireRef;
+    final ref = context.watch<AuthService>().agenceRef;
     if (ref == null) {
       return const _Shell(child: EmptyState('Session en cours…'));
     }
@@ -202,6 +203,10 @@ class _ContentState extends State<_Content> {
   @override
   Widget build(BuildContext context) {
     final h = widget.house;
+    final auth = context.watch<AuthService>();
+    final canEdit = auth.can(ProPerm.biensCreer);
+    final canPublish = auth.can(ProPerm.biensPublier);
+    final canArchive = auth.can(ProPerm.biensArchiver);
     return LayoutBuilder(builder: (context, c) {
       final wide = c.maxWidth >= 900;
       final left = Column(
@@ -231,12 +236,13 @@ class _ContentState extends State<_Content> {
       final right = _ActionsPanel(
         house: h,
         busy: _busy,
-        onToggle: _toggleActive,
-        onArchive: _archive,
-        onEdit: () => context.go('/parc/${h.id}/modifier'),
-        onDeleteBrouillon: _deleteBrouillon,
-        onPublish:
-            h.prive ? () => context.go('/parc/${h.id}/publier') : null,
+        onToggle: canPublish ? _toggleActive : null,
+        onArchive: canArchive ? _archive : null,
+        onEdit: canEdit ? () => context.go('/parc/${h.id}/modifier') : null,
+        onDeleteBrouillon: canEdit ? _deleteBrouillon : null,
+        onPublish: (canEdit && h.prive)
+            ? () => context.go('/parc/${h.id}/publier')
+            : null,
       );
       return wide
           ? Row(
@@ -496,16 +502,16 @@ class _ActionsPanel extends StatelessWidget {
   const _ActionsPanel({
     required this.house,
     required this.busy,
-    required this.onToggle,
-    required this.onArchive,
-    required this.onEdit,
-    required this.onDeleteBrouillon,
+    this.onToggle,
+    this.onArchive,
+    this.onEdit,
+    this.onDeleteBrouillon,
     this.onPublish,
   });
   final House house;
   final bool busy;
-  final VoidCallback onToggle, onArchive, onEdit, onDeleteBrouillon;
-  final VoidCallback? onPublish;
+  // `null` = le membre connecté n'a pas la permission → contrôle masqué/inerte.
+  final VoidCallback? onToggle, onArchive, onEdit, onDeleteBrouillon, onPublish;
 
   @override
   Widget build(BuildContext context) {
@@ -547,7 +553,9 @@ class _ActionsPanel extends StatelessWidget {
                   ),
                   Switch(
                     value: h.enLigne,
-                    onChanged: canToggle && !busy ? (_) => onToggle() : null,
+                    onChanged: canToggle && !busy && onToggle != null
+                        ? (_) => onToggle!()
+                        : null,
                     activeTrackColor: AppTheme.ink,
                   ),
                 ],

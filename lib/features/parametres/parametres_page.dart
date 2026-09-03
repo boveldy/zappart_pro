@@ -30,7 +30,7 @@ class ParametresPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
+    final ref = auth.agenceRef;
     final email = FirebaseAuth.instance.currentUser?.email ?? '—';
 
     return PageScaffold(

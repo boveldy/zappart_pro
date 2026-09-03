@@ -58,6 +58,14 @@ class Abonnement {
   /// Plusieurs comptes agents : Agence + et Réseau.
   bool get multiUtilisateur => formule.index >= Formule.agencePlus.index;
 
+  /// Nombre de membres d'équipe autorisés (contrôle applicatif — le dépasser
+  /// ne casse rien). Les forfaits mono-utilisateur = 1 (le fondateur seul).
+  int get plafondSieges => switch (formule) {
+        Formule.agencePlus => 8,
+        Formule.reseau => 50,
+        _ => 1,
+      };
+
   bool get estPayant => formule != Formule.decouverte;
 
   // ── Cycle de vie (grâce 7 j → lecture seule à J+30) ──

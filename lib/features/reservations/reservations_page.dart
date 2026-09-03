@@ -26,8 +26,8 @@ class _ReservationsPageState extends State<ReservationsPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
-    if (ref == null || !auth.estHote) {
+    final ref = auth.agenceRef;
+    if (ref == null || !auth.aGerance) {
       return const PageScaffold(
         title: 'Réservations',
         child: EmptyState(

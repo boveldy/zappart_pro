@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/ui.dart';
 import '../../data/bail.dart';
+import '../../data/permissions.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import 'bail_releve.dart';
@@ -25,13 +26,14 @@ class _BauxPageState extends State<BauxPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
-    if (ref == null || !auth.estHote) {
+    final ref = auth.agenceRef;
+    if (!auth.aGerance || ref == null) {
       return const PageScaffold(
         title: 'Baux',
         child: EmptyState('Votre compte est prestataire — pas de gestion locative.'),
       );
     }
+    final canCreer = auth.can(ProPerm.bauxCreer);
     final repo = BailRepository(ref);
 
     return StreamBuilder<List<Depense>>(
@@ -93,7 +95,8 @@ class _BauxPageState extends State<BauxPage> {
                       child: const Text('Relevé par propriétaire'),
                     ),
                   ),
-                FilledButton(
+                if (canCreer)
+                  FilledButton(
                   onPressed: () {
                     final abo = auth.abonnement;
                     final quotaOk =

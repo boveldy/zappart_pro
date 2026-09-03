@@ -109,7 +109,7 @@ class _RevenusPageState extends State<RevenusPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
+    final ref = auth.agenceRef;
     if (ref == null) {
       return const PageScaffold(
         title: 'Revenus',

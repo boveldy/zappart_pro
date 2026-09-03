@@ -17,7 +17,7 @@ class ArchivesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ref = context.watch<AuthService>().partenaireRef;
+    final ref = context.watch<AuthService>().agenceRef;
     if (ref == null) {
       return const PageScaffold(
         title: 'Biens archivés',

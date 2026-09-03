@@ -9,6 +9,7 @@ import '../../core/services/ai_description.dart';
 import '../../core/ui.dart';
 import '../../core/widgets/map_picker.dart';
 import '../../data/annonce_catalog.dart';
+import '../../data/permissions.dart';
 import '../../data/annonce_form.dart';
 import '../../data/house.dart';
 import '../../data/immeuble.dart';
@@ -53,7 +54,7 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
   }
 
   Future<void> _seed() async {
-    final ref = context.read<AuthService>().partenaireRef;
+    final ref = context.read<AuthService>().agenceRef;
     if (ref == null) {
       if (mounted) setState(() => _seeding = false);
       return;
@@ -95,8 +96,8 @@ class _NouvelleAnnoncePageState extends State<NouvelleAnnoncePage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
-    if (ref == null || !auth.estHote) {
+    final ref = auth.agenceRef;
+    if (ref == null || !auth.aGerance || !auth.can(ProPerm.biensCreer)) {
       return const PageScaffold(
         title: 'Ajouter une annonce',
         child: EmptyState(

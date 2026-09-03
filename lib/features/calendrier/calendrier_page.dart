@@ -32,8 +32,8 @@ class _CalendrierPageState extends State<CalendrierPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
-    if (ref == null || !auth.estHote) {
+    final ref = auth.agenceRef;
+    if (ref == null || !auth.aGerance) {
       return const PageScaffold(
         title: 'Calendrier',
         child: EmptyState('Votre compte est prestataire — pas de parc à planifier.'),

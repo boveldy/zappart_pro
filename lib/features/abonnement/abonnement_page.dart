@@ -53,7 +53,7 @@ class _AbonnementPageState extends State<AbonnementPage> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
     final abo = auth.abonnement;
-    final ref = auth.partenaireRef;
+    final ref = auth.agenceRef;
 
     return StreamBuilder<bool>(
       stream: PaiementService.paiementActif(),

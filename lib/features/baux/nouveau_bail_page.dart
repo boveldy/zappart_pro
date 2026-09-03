@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../core/ui.dart';
 import '../../data/bail.dart';
 import '../../data/house.dart';
+import '../../data/permissions.dart';
 import '../../data/proprietaire.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
@@ -79,8 +80,8 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
-    if (ref == null || !auth.estHote) {
+    final ref = auth.agenceRef;
+    if (ref == null || !auth.aGerance || !auth.can(ProPerm.bauxCreer)) {
       return const PageScaffold(
         title: 'Nouveau bail',
         child: EmptyState('Compte non hôte.'),
@@ -137,7 +138,7 @@ class _NouveauBailPageState extends State<NouveauBailPage> {
                           proprio: _proprio,
                           onPick: () async {
                             final ref =
-                                context.read<AuthService>().partenaireRef;
+                                context.read<AuthService>().agenceRef;
                             if (ref == null) return;
                             final p = await pickProprietaire(
                                 context, ProprietaireRepository(ref));

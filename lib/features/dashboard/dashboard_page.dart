@@ -24,13 +24,13 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final ref = auth.partenaireRef;
+    final ref = auth.agenceRef;
     if (ref == null) {
       return const _Padded(
           child: _Empty(text: 'Fiche partenaire en cours de liaison…'));
     }
-    final repo = DashboardRepository(ref, estHote: auth.estHote);
-    return _DashboardLoader(repo: repo, estHote: auth.estHote);
+    final repo = DashboardRepository(ref, estHote: auth.aGerance);
+    return _DashboardLoader(repo: repo, estHote: auth.aGerance);
   }
 }
 
@@ -924,7 +924,7 @@ class _LoyersBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ref = context.read<AuthService>().partenaireRef;
+    final ref = context.read<AuthService>().agenceRef;
     if (ref == null) return const SizedBox.shrink();
     final repo = BailRepository(ref);
 

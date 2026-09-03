@@ -4,11 +4,14 @@ import 'package:go_router/go_router.dart';
 import '../features/abonnement/abonnement_page.dart';
 import '../features/auth/devenir_partenaire_page.dart';
 import '../features/auth/login_page.dart';
+import '../features/auth/rejoindre_page.dart';
 import '../features/baux/baux_page.dart';
 import '../features/baux/fiche_bail_page.dart';
 import '../features/baux/nouveau_bail_page.dart';
 import '../features/calendrier/calendrier_page.dart';
 import '../features/dashboard/dashboard_page.dart';
+import '../features/equipe/equipe_page.dart';
+import '../features/journal/journal_page.dart';
 import '../features/not_partner_page.dart';
 import '../features/parametres/parametres_page.dart';
 import '../features/immeubles/immeubles_page.dart';
@@ -43,9 +46,22 @@ GoRouter buildRouter(AuthService auth) {
         case ProAccess.notPartner:
         case ProAccess.pending:
           return loc == '/inscription' ? null : '/inscription';
+        case ProAccess.invitePending:
+          return loc == '/rejoindre' ? null : '/rejoindre';
         case ProAccess.partner:
-          if (loc == '/login' || loc == '/loading' || loc == '/inscription') {
+          if (loc == '/login' ||
+              loc == '/loading' ||
+              loc == '/inscription' ||
+              loc == '/rejoindre') {
             return '/';
+          }
+          // Route d'un domaine dont le membre n'a aucune permission → dashboard.
+          for (final n in kNavItems) {
+            if (n.visible != null &&
+                !n.visible!(auth) &&
+                (loc == n.route || loc.startsWith('${n.route}/'))) {
+              return '/';
+            }
           }
           return null;
       }
@@ -58,6 +74,7 @@ GoRouter buildRouter(AuthService auth) {
         builder: (_, __) => const DevenirPartenairePage(),
       ),
       GoRoute(path: '/no-access', builder: (_, __) => const NotPartnerPage()),
+      GoRoute(path: '/rejoindre', builder: (_, __) => const RejoindrePage()),
       ShellRoute(
         builder: (_, __, child) => AppShell(child: child),
         routes: [
@@ -134,6 +151,14 @@ GoRouter buildRouter(AuthService auth) {
           GoRoute(
             path: '/abonnement',
             builder: (_, __) => const AbonnementPage(),
+          ),
+          GoRoute(
+            path: '/equipe',
+            builder: (_, __) => const EquipePage(),
+          ),
+          GoRoute(
+            path: '/journal',
+            builder: (_, __) => const JournalPage(),
           ),
           GoRoute(
             path: '/parametres',
